@@ -108,3 +108,61 @@ rg "net9\.0" .
 ### Next recommended slice
 
 Add the first production authentication shell using JWT bearer validation configuration, then introduce server-side tenant mapping and authenticated user-to-role mapping while keeping local tests independent from live Azure resources.
+
+## Slice 4 - JWT bearer shell, tenant mapping seam, authenticated user-role mapping seam
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - JWT bearer authentication shell added using Microsoft Entra configuration.
+- `FR-IDN-005` - Authenticated flows are designed around validated principals and fail closed when mappings are absent.
+- `FR-IDN-010` - Permission checks now resolve authenticated users through a mapping seam before evaluating permissions.
+- `FR-IDN-012` - Internal Adopta tenant context is resolved through server-side tenant mapping, not directly from request headers or raw tenant claims.
+- `FR-IDN-031` - Tests cover unauthenticated, authenticated, missing mapping, valid mapping, missing role mapping, and permission allow/deny behavior.
+- `FR-IDN-040` - Temporary safe security audit hooks were added for tenant-resolution and permission-denial decisions.
+
+### Scope delivered
+
+- Added JWT bearer authentication shell with `Authentication:MicrosoftEntra` options.
+- Added test authentication scheme that is enabled only by integration-test host configuration.
+- Added server-side tenant mapping seam from external Entra tenant/application identifiers to internal Adopta tenant ids.
+- Updated production tenant resolution so `tid` is not treated as the internal Adopta tenant id.
+- Added authenticated user-to-role mapping seam using an in-memory store.
+- Updated permission filter to resolve the authenticated user through the mapping service and fail closed.
+- Added in-memory security audit service for safe authentication, tenant-resolution, and permission-denial metadata.
+
+### Security and tenant-resolution assumptions
+
+Production tenant context now follows this intended flow:
+
+```text
+validated ClaimsPrincipal
+  -> external Entra tenant/application identifiers
+  -> server-side tenant mapping service
+  -> internal Adopta tenant id
+```
+
+The test authentication scheme is not enabled in `appsettings.json` or `appsettings.Development.json`. Integration tests enable it only through the test host. Local build and tests do not require live Azure resources, live Entra metadata, real tenant ids, client ids, or secrets.
+
+The permission filter fails closed when tenant context is missing, the user is unauthenticated, tenant mapping is missing, user/role mapping is missing, the permission key is empty, the permission is missing, or mapping/authorization services fail unexpectedly.
+
+Security audit events record safe metadata only: action, outcome, internal tenant id where available, and failure category. They do not log bearer tokens, raw claims, request headers, email addresses, or sensitive identity payloads.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" .
+```
+
+### Known limitations
+
+- JWT bearer middleware is configured, but no live Entra tenant metadata is required or validated during local tests.
+- Tenant mapping and authenticated user-role mapping are in-memory foundation seams only.
+- No database persistence, Microsoft Graph, SCIM, external identity API calls, or durable audit storage were added.
+- The test authentication handler is compiled into the API project but is inactive unless explicitly enabled by test-host configuration.
+
+### Next recommended slice
+
+Add durable persistence planning for tenants, applications, users, roles, permissions, and audit events, then introduce repository/data-access seams and tenant-isolation tests without turning on production database infrastructure yet.

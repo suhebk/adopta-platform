@@ -2,18 +2,20 @@ using Adopta.Api.Auth;
 using Adopta.Api.Tenancy;
 using Adopta.Application;
 using Adopta.Application.Abstractions;
+using Adopta.Application.Identity;
 using Adopta.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAdoptaApplication();
 builder.Services.AddAdoptaInfrastructure(builder.Configuration);
-builder.Services.Configure<AdoptaAuthenticationOptions>(
-    builder.Configuration.GetSection(AdoptaAuthenticationOptions.SectionName));
+builder.Services.AddAdoptaAuthentication(builder.Configuration);
 
 var app = builder.Build();
 
+app.UseAuthentication();
 app.UseMiddleware<AdoptionTenantContextMiddleware>();
+app.UseAuthorization();
 
 app.MapGet("/health/live", () => Results.Ok(new
 {
@@ -51,6 +53,16 @@ app.MapGet(
         hasExternalTenantId = !string.IsNullOrWhiteSpace(tenantContext.ExternalTenantId)
     }))
     .RequireAdoptaTenantContext();
+
+app.MapGet(
+    "/diagnostics/security-context",
+    (IAdoptionTenantContext tenantContext) => Results.Ok(new
+    {
+        tenantId = tenantContext.TenantId,
+        authorized = true
+    }))
+    .RequireAdoptaTenantContext()
+    .RequireAdoptaPermission(AdoptaPermissionKeys.DiagnosticsRead);
 
 app.Run();
 

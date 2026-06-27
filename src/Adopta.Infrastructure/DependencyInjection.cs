@@ -21,6 +21,10 @@ public static class DependencyInjection
                 var section = configuration.GetSection(EntraTenantResolutionOptions.SectionName);
                 options.TenantIdClaimType = section[nameof(EntraTenantResolutionOptions.TenantIdClaimType)]
                     ?? options.TenantIdClaimType;
+                options.ApplicationIdClaimType = section[nameof(EntraTenantResolutionOptions.ApplicationIdClaimType)]
+                    ?? options.ApplicationIdClaimType;
+                options.FallbackApplicationIdClaimType = section[nameof(EntraTenantResolutionOptions.FallbackApplicationIdClaimType)]
+                    ?? options.FallbackApplicationIdClaimType;
                 options.SubjectClaimType = section[nameof(EntraTenantResolutionOptions.SubjectClaimType)]
                     ?? options.SubjectClaimType;
             });
@@ -34,11 +38,17 @@ public static class DependencyInjection
         services.AddScoped<IAdoptionTenantContext>(serviceProvider =>
             serviceProvider.GetRequiredService<AdoptionTenantContext>());
         services.AddScoped<IProductionTenantResolver, ClaimsPrincipalProductionTenantResolver>();
+        services.AddSingleton<InMemoryAdoptaTenantMappingStore>();
+        services.AddSingleton<InMemoryAuthenticatedUserMappingStore>();
+        services.AddScoped<IAdoptaTenantMappingService, InMemoryAdoptaTenantMappingService>();
+        services.AddScoped<IAuthenticatedUserMappingService, InMemoryAuthenticatedUserMappingService>();
 
         services.AddSingleton<InMemoryAdoptionAuditStore>();
+        services.AddSingleton<InMemoryAdoptionSecurityAuditStore>();
         services.AddSingleton<InMemoryTenantScopedStore<TenantApplication>>();
 
         services.AddScoped<IAdoptionAuditService, InMemoryAdoptionAuditService>();
+        services.AddScoped<IAdoptionSecurityAuditService, InMemoryAdoptionSecurityAuditService>();
         services.AddScoped<IApplicationRegistrationService, InMemoryApplicationRegistrationService>();
 
         return services;

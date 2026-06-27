@@ -7,10 +7,14 @@ namespace Adopta.Infrastructure.Identity;
 
 public sealed class ClaimsPrincipalProductionTenantResolver : IProductionTenantResolver
 {
+    private readonly IAdoptaTenantMappingService _tenantMappingService;
     private readonly EntraTenantResolutionOptions _options;
 
-    public ClaimsPrincipalProductionTenantResolver(IOptions<EntraTenantResolutionOptions> options)
+    public ClaimsPrincipalProductionTenantResolver(
+        IAdoptaTenantMappingService tenantMappingService,
+        IOptions<EntraTenantResolutionOptions> options)
     {
+        _tenantMappingService = tenantMappingService;
         _options = options.Value;
     }
 
@@ -29,15 +33,28 @@ public sealed class ClaimsPrincipalProductionTenantResolver : IProductionTenantR
             return ProductionTenantResolutionResult.Unresolved("tenant_claim_missing");
         }
 
-        if (!Guid.TryParse(externalTenantId, out var tenantId) || tenantId == Guid.Empty)
+        if (!Guid.TryParse(externalTenantId, out var parsedExternalTenantId) || parsedExternalTenantId == Guid.Empty)
         {
             return ProductionTenantResolutionResult.Unresolved("tenant_claim_invalid");
+        }
+
+        var applicationId = principal.FindFirst(_options.ApplicationIdClaimType)?.Value
+            ?? principal.FindFirst(_options.FallbackApplicationIdClaimType)?.Value;
+        if (string.IsNullOrWhiteSpace(applicationId))
+        {
+            return ProductionTenantResolutionResult.Unresolved("application_claim_missing");
+        }
+
+        var tenantMapping = _tenantMappingService.MapTenant(externalTenantId, applicationId);
+        if (!tenantMapping.IsMapped || !tenantMapping.TenantId.HasValue)
+        {
+            return ProductionTenantResolutionResult.Unresolved(tenantMapping.FailureCode);
         }
 
         var subjectId = principal.FindFirst(_options.SubjectClaimType)?.Value;
 
         return ProductionTenantResolutionResult.Resolved(
-            tenantId,
+            tenantMapping.TenantId.Value,
             externalTenantId,
             string.IsNullOrWhiteSpace(subjectId) ? null : subjectId);
     }
