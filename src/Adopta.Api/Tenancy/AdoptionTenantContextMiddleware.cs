@@ -1,4 +1,5 @@
 using Adopta.Infrastructure.Tenancy;
+using Adopta.Application.Abstractions;
 
 namespace Adopta.Api.Tenancy;
 
@@ -13,8 +14,25 @@ public sealed class AdoptionTenantContextMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext httpContext, AdoptionTenantContext tenantContext)
+    public async Task InvokeAsync(
+        HttpContext httpContext,
+        AdoptionTenantContext tenantContext,
+        IProductionTenantResolver productionTenantResolver)
     {
+        if (httpContext.User.Identity?.IsAuthenticated == true)
+        {
+            var productionResolution = productionTenantResolver.Resolve(httpContext.User);
+            if (productionResolution.IsResolved && productionResolution.TenantId.HasValue)
+            {
+                tenantContext.SetTenant(
+                    productionResolution.TenantId.Value,
+                    productionResolution.ExternalTenantId);
+            }
+
+            await _next(httpContext);
+            return;
+        }
+
         if (!httpContext.Request.Headers.TryGetValue(DevelopmentTenantHeaderName, out var tenantHeader))
         {
             await _next(httpContext);
