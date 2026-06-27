@@ -17,7 +17,8 @@ public sealed class AdoptionTenantContextMiddleware
     public async Task InvokeAsync(
         HttpContext httpContext,
         AdoptionTenantContext tenantContext,
-        IProductionTenantResolver productionTenantResolver)
+        IProductionTenantResolver productionTenantResolver,
+        IAdoptionSecurityAuditService securityAuditService)
     {
         if (httpContext.User.Identity?.IsAuthenticated == true)
         {
@@ -27,6 +28,17 @@ public sealed class AdoptionTenantContextMiddleware
                 tenantContext.SetTenant(
                     productionResolution.TenantId.Value,
                     productionResolution.ExternalTenantId);
+                await securityAuditService.RecordAsync(
+                    "TenantResolution",
+                    "Succeeded",
+                    productionResolution.TenantId.Value);
+            }
+            else
+            {
+                await securityAuditService.RecordAsync(
+                    "TenantResolution",
+                    "Failed",
+                    failureCategory: productionResolution.FailureCode);
             }
 
             await _next(httpContext);

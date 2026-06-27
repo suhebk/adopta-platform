@@ -6,5 +6,9 @@ public sealed class EntraTenantResolutionOptions
 
     public string TenantIdClaimType { get; set; } = "tid";
 
+    public string ApplicationIdClaimType { get; set; } = "azp";
+
+    public string FallbackApplicationIdClaimType { get; set; } = "appid";
+
     public string SubjectClaimType { get; set; } = "oid";
 }

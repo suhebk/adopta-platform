@@ -62,16 +62,20 @@ public sealed class PermissionEndpointFilterTests
         AdoptionUser user,
         bool isAllowed)
     {
+        var tenantId = hasTenant ? user.TenantId : Guid.Empty;
         var services = new ServiceCollection()
-            .AddSingleton<IAdoptionTenantContext>(new TestTenantContext(hasTenant))
+            .AddSingleton<IAdoptionTenantContext>(new TestTenantContext(tenantId))
+            .AddSingleton<IAuthenticatedUserMappingService>(new TestAuthenticatedUserMappingService(user))
             .AddSingleton<IAdoptionPermissionEvaluator>(new TestPermissionEvaluator(isAllowed))
             .BuildServiceProvider();
 
         var httpContext = new DefaultHttpContext
         {
-            RequestServices = services
+            RequestServices = services,
+            User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                [new System.Security.Claims.Claim("oid", user.ExternalUserId)],
+                authenticationType: "Test"))
         };
-        httpContext.Items[RequirePermissionEndpointFilter.CurrentUserItemName] = user;
 
         return new DefaultEndpointFilterInvocationContext(httpContext, []);
     }
@@ -89,17 +93,33 @@ public sealed class PermissionEndpointFilterTests
 
     private sealed class TestTenantContext : IAdoptionTenantContext
     {
-        public TestTenantContext(bool hasTenant)
+        public TestTenantContext(Guid tenantId)
         {
-            HasTenant = hasTenant;
-            TenantId = hasTenant ? Guid.NewGuid() : Guid.Empty;
+            TenantId = tenantId;
         }
 
         public Guid TenantId { get; }
 
         public string? ExternalTenantId => null;
 
-        public bool HasTenant { get; }
+        public bool HasTenant => TenantId != Guid.Empty;
+    }
+
+    private sealed class TestAuthenticatedUserMappingService : IAuthenticatedUserMappingService
+    {
+        private readonly AdoptionUser _user;
+
+        public TestAuthenticatedUserMappingService(AdoptionUser user)
+        {
+            _user = user;
+        }
+
+        public AuthenticatedUserMappingResult MapUser(Guid tenantId, System.Security.Claims.ClaimsPrincipal principal)
+        {
+            return tenantId == _user.TenantId
+                ? AuthenticatedUserMappingResult.Mapped(_user)
+                : AuthenticatedUserMappingResult.Unmapped("tenant_context_missing");
+        }
     }
 
     private sealed class TestPermissionEvaluator : IAdoptionPermissionEvaluator
