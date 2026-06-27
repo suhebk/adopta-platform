@@ -174,7 +174,7 @@ flowchart TB
 | **Admin web** | **Next.js (React 19, App Router, RSC)** + TypeScript + Tailwind + shadcn/ui | Modern, fast, server components, great DX; design tokens via `frontend-design` skill | Remix |
 | **Runtime SDK** | **TypeScript**, **Preact**-or-vanilla overlay, built with **Vite/esbuild**, **Shadow-DOM** isolation, shipped to CDN | Tiny footprint, framework-agnostic, isolated from host app | Lit / vanilla web components |
 | **Browser extension** | **Manifest V3** (Chrome/Edge/Firefox) sharing the SDK core | Client-side URL match; alt delivery where snippet impossible | — |
-| **Core API / BFF** | **NestJS** (Node/TS), REST + OpenAPI, Zod validation | TS consistency, structured, testable, fast to build with Claude | **.NET 9 ASP.NET Core minimal APIs** (deep Azure/Entra alignment) |
+| **Core API / BFF** | **NestJS** (Node/TS), REST + OpenAPI, Zod validation | TS consistency, structured, testable, fast to build with Claude | **.NET 10 ASP.NET Core minimal APIs** (deep Azure/Entra alignment) |
 | **Event ingestion** | **Go** (or **.NET**) lightweight high-throughput service | Throughput + low cost on the hot path | Node with clustering (lower ceiling) |
 | **Streaming** | **Azure Event Hubs** (Kafka protocol) | Managed, Kafka-compatible, scales | Confluent/Kafka on AKS |
 | **Stream processing/jobs** | **Container Apps Jobs** + consumer workers | Simple, autoscaling (KEDA), cost-aware | Azure Stream Analytics / Flink |
@@ -194,7 +194,7 @@ flowchart TB
 | **Testing** | **Vitest/Jest** (unit), **Playwright** (E2E incl. element-engine harness), **k6** (load), **Pact** (contract) | Element engine + isolation need real-browser + load coverage | — |
 | **Email/notify** | **Azure Communication Services** | In-Azure email/SMS for invites, alerts | SendGrid |
 
-> **Language note:** If your team is .NET-first (common in Microsoft shops), the **core API and ingestion can be .NET 9** while the **SDK and admin remain TypeScript**. The architecture is otherwise unchanged. The default here is TypeScript-first purely to maximise shared types and Claude-Code velocity.
+> **Language note:** If your team is .NET-first (common in Microsoft shops), the **core API and ingestion can be .NET 10** while the **SDK and admin remain TypeScript**. The architecture is otherwise unchanged. The default here is TypeScript-first purely to maximise shared types and Claude-Code velocity.
 
 ---
 
@@ -437,7 +437,7 @@ flowchart LR
 adopta/
 ├─ apps/
 │  ├─ admin-web/            # Next.js admin studio (incl. in-app editor host)
-│  ├─ core-api/            # NestJS BFF/control plane (or .NET 9 alt)
+│  ├─ core-api/            # NestJS BFF/control plane (or .NET 10 alt)
 │  ├─ ingestion-svc/       # Go/.NET high-throughput event intake
 │  ├─ stream-consumers/    # Event Hubs consumers, anchor-health, friction, exports
 │  ├─ ai-svc/              # co-author, answer (RAG), insights, vision-fallback
