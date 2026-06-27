@@ -9,6 +9,7 @@ public static class DependencyInjection
     public static IServiceCollection AddAdoptaApplication(this IServiceCollection services)
     {
         services.AddScoped<IAdoptionAuthorizationService, AdoptionAuthorizationService>();
+        services.AddScoped<IAdoptionPermissionEvaluator, AdoptionPermissionEvaluator>();
 
         return services;
     }

@@ -48,3 +48,63 @@ rg "net9\.0" .
 ### Next recommended slice
 
 Implement the Entra authentication shell and production tenant-resolution design seam: validated token claims, server-side tenant mapping, and first tenant-required API endpoint protected by the tenant context filter.
+
+## Slice 3 - Entra auth seam, production tenant-resolution seam, tenant diagnostic endpoint
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Microsoft Entra authentication configuration seam added without requiring live tenant secrets for local build/test.
+- `FR-IDN-005` - Tenant resolution is designed to run after authentication and read only validated principal claims.
+- `FR-IDN-010` - Controlled permission-key catalog and fail-closed permission evaluator/filter pattern added.
+- `FR-IDN-012` - Tenant-required endpoint pattern now protects the first diagnostic tenant-context endpoint.
+- `FR-IDN-031` - Tests cover missing, malformed, and valid tenant context behavior.
+- `FR-IDN-040` - Audit remains temporary/in-memory; no durable audit persistence added in this slice.
+
+### Scope delivered
+
+- Added non-secret Microsoft Entra authentication configuration placeholders under `Authentication:MicrosoftEntra`.
+- Added production tenant-resolution seam through `IProductionTenantResolver`.
+- Added `ClaimsPrincipalProductionTenantResolver`, which reads configured claim types from an authenticated `ClaimsPrincipal`.
+- Added explicit separation between authenticated production claim resolution and the Sprint 1 development/test `X-Adopta-Tenant-Id` header.
+- Added `GET /diagnostics/tenant-context`, protected by the tenant-required endpoint filter.
+- Added a small permission catalog:
+  - `Diagnostics.Read`
+  - `Tenants.Read`
+  - `Tenants.Manage`
+  - `Applications.Read`
+  - `Applications.Manage`
+  - `Audit.Read`
+- Added fail-closed permission evaluator and endpoint filter pattern.
+
+### Security and tenant-resolution assumptions
+
+Production tenant resolution does not trust request headers, query strings, request bodies, or arbitrary client-supplied tenant values. It reads only from an authenticated `ClaimsPrincipal` after authentication has run. Normal missing-claim cases return an unresolved result instead of throwing, so protected endpoints fail closed.
+
+The `X-Adopta-Tenant-Id` header remains development/test-only. The middleware uses the production claim resolver for authenticated principals and only considers the header for unauthenticated local/test traffic. This keeps the temporary header path separate from the production trust boundary.
+
+The diagnostic endpoint returns only minimal tenant context information: tenant id and whether an external tenant id exists. It does not return raw tokens, full claims, bearer tokens, request headers, email addresses, or sensitive identity details.
+
+### Audit limitations
+
+No new durable audit persistence was added. In-memory audit remains temporary. Tenant/security audit events should be wired once authenticated actors and durable audit storage are introduced.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" .
+```
+
+### Known limitations
+
+- The API does not yet validate JWT bearer tokens.
+- Entra authority/audience configuration values are placeholders and contain no secrets.
+- Server-side tenant mapping is not implemented yet; the resolver currently parses the configured tenant claim as the internal tenant id for the Sprint 1 seam.
+- Permission filters are present but no authenticated production user/role mapper exists yet.
+- Audit remains in-memory and non-durable.
+
+### Next recommended slice
+
+Add the first production authentication shell using JWT bearer validation configuration, then introduce server-side tenant mapping and authenticated user-to-role mapping while keeping local tests independent from live Azure resources.
