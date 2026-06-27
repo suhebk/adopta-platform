@@ -265,7 +265,7 @@ Amend:
 
 Change default implementation stack to:
 
-- **Control plane:** .NET 9 / ASP.NET Core APIs.
+- **Control plane:** .NET 10 / ASP.NET Core APIs.
 - **Admin Studio:** Blazor Web App or ASP.NET Core + React only if UI velocity demands it.
 - **Runtime SDK:** TypeScript, Shadow DOM, Vite/esbuild.
 - **Browser extension:** TypeScript Manifest V3.

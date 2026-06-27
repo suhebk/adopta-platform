@@ -89,7 +89,7 @@ Use this default stack unless a repository-specific constraint requires otherwis
 
 ### Backend/control plane
 
-- .NET 9 / ASP.NET Core.
+- .NET 10 / ASP.NET Core.
 - Clean Architecture or modular vertical-slice architecture.
 - EF Core.
 - Azure SQL with Row-Level Security or Azure PostgreSQL with RLS.
@@ -438,7 +438,7 @@ Read the specification documents in /docs, especially 06-review-retrofit-decisio
 
 Begin Sprint 1: SaaS Foundation, Security & Platform Skeleton.
 
-Use Visual Studio and .NET 9 / ASP.NET Core as the control-plane default. Use GitHub Actions and Bicep for Azure infrastructure. Create a production-ready foundation, not a prototype.
+Use Visual Studio and .NET 10 / ASP.NET Core as the control-plane default. Use GitHub Actions and Bicep for Azure infrastructure. Create a production-ready foundation, not a prototype.
 
 Implement in small PR-sized slices:
 1. solution/repo structure;

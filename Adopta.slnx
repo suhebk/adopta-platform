@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Adopta.Api/Adopta.Api.csproj" />
+    <Project Path="src/Adopta.Application/Adopta.Application.csproj" />
+    <Project Path="src/Adopta.Domain/Adopta.Domain.csproj" />
+    <Project Path="src/Adopta.Infrastructure/Adopta.Infrastructure.csproj" />
+    <Project Path="src/Adopta.Web/Adopta.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Adopta.IntegrationTests/Adopta.IntegrationTests.csproj" />
+    <Project Path="tests/Adopta.UnitTests/Adopta.UnitTests.csproj" />
+  </Folder>
+</Solution>
