@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Adopta Runtime Demo</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero" data-adopt-id="demo.nav.overview">
+        <p class="eyebrow">Local runtime demo</p>
+        <h1>Adopta runtime contract check</h1>
+        <p>This local page verifies SDK setup, content validation, and stable anchors.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Billing actions</h2>
+        <div class="actions">
+          <button type="button" data-adopt-id="demo.billing.submit">Submit return</button>
+          <button type="button" data-adopt-id="demo.billing.review">Review draft</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Guidance entry points</h2>
+        <button type="button" data-adopt-id="demo.checklist.open">Open checklist</button>
+        <button type="button" data-adopt-id="demo.walkthrough.start">Start walkthrough</button>
+      </section>
+
+      <section class="panel diagnostics" aria-live="polite">
+        <h2>Diagnostics</h2>
+        <ul data-adopt-id="demo.diagnostics.status" id="adopta-demo-status">
+          <li>Waiting for local SDK checks.</li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
