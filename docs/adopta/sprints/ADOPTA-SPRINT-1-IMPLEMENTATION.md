@@ -166,3 +166,80 @@ rg "net9\.0" .
 ### Next recommended slice
 
 Add durable persistence planning for tenants, applications, users, roles, permissions, and audit events, then introduce repository/data-access seams and tenant-isolation tests without turning on production database infrastructure yet.
+
+## Slice 5 - Persistence seam and repository tenant-isolation boundary
+
+### Requirement IDs covered
+
+- `FR-IDN-010` - Repository seams added for users, roles, and permissions.
+- `FR-IDN-012` - Tenant-scoped repository access fails closed when current tenant context is missing or mismatched.
+- `FR-IDN-030` - Tenant-scoped records are persisted through tenant-aware repository abstractions.
+- `FR-IDN-031` - Tests prove cross-tenant repository reads/writes are denied or filtered.
+- `FR-IDN-040` - Repository seams added for audit and security audit events.
+- `NFR-SEC-3` - Tenant isolation is now enforced at the in-memory data-access boundary for Sprint 1 foundation repositories.
+
+### Scope delivered
+
+- Added application-layer repository abstractions for:
+  - tenants;
+  - tenant applications;
+  - users;
+  - roles/permissions;
+  - tenant mappings;
+  - authenticated user mappings;
+  - audit events;
+  - security audit events.
+- Added in-memory repository implementations only.
+- Added tenant access guard with a safe denial exception message.
+- Registered repository abstractions in dependency injection.
+- Added unit and integration tests for tenant-isolated repository access.
+
+### Persistence seam assumptions
+
+Repository abstractions are intentionally implementation-neutral and future EF-ready. They do not expose in-memory store details. The in-memory repository implementations exist only to validate the Sprint 1 data-access boundary and tenant-isolation behavior before production database infrastructure is introduced.
+
+Tenant isolation is enforced at repository entry points. Repositories deny access when tenant context is missing, the requested tenant differs from the current tenant context, an entity belongs to another tenant, or a caller attempts cross-tenant read/write/list access.
+
+Tenant access denial uses the safe message `Tenant access denied.` and does not expose other tenant ids, raw claims, headers, tokens, or internal store keys.
+
+### Explicitly not enabled
+
+No EF Core packages, `DbContext`, migrations, connection strings, database readiness checks, Azure SQL/PostgreSQL provisioning, or Row-Level Security implementation were added in this slice.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github Adopta.slnx global.json NuGet.config README.md AGENTS.md
+```
+
+### Known limitations
+
+- Repository implementations are in-memory and non-durable.
+- The in-memory repositories validate isolation behavior but are not production persistence.
+- Database-specific isolation, including PostgreSQL/Azure SQL RLS, is still future work.
+- Audit and security audit storage remain non-durable.
+
+### Sprint 1 completion checklist
+
+- Solution/repository structure: complete.
+- .NET-first backend/control-plane foundation: complete.
+- Admin web shell placeholder/project skeleton: complete.
+- Tenant, TenantApplication, AdoptionUser, Role, Permission, AuditEvent, DeploymentEnvironment models: complete.
+- Tenant context conventions: complete for Sprint 1 foundation.
+- RBAC conventions and permission catalog: complete for Sprint 1 foundation.
+- Audit logging conventions and in-memory skeleton: complete for Sprint 1 foundation.
+- Automated tenant-isolation tests: complete for in-memory/repository boundary.
+- GitHub Actions baseline: complete.
+- Documentation and implementation notes: complete for slices delivered so far.
+- Production database persistence/RLS: intentionally not implemented in Sprint 1 Slice 5.
+
+### Remaining Sprint 1 acceptance criteria status
+
+All core Sprint 1 acceptance criteria are satisfied at foundation level, subject to final review and any requested hardening slice. Production database persistence, durable audit storage, and provider-specific RLS remain intentionally deferred until explicitly approved.
+
+### Next recommended sprint
+
+Begin ADOPTA-SPRINT-2 planning only after Sprint 1 review is accepted. Sprint 2 should start with the runtime SDK contract and element anchoring foundation, while continuing to avoid Property MTD repository changes until the controlled SDK/API contract is ready.

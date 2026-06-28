@@ -1,7 +1,9 @@
 using Adopta.Application.Abstractions;
+using Adopta.Application.Abstractions.Persistence;
 using Adopta.Domain.Tenancy;
 using Adopta.Infrastructure.Audit;
 using Adopta.Infrastructure.Identity;
+using Adopta.Infrastructure.Persistence;
 using Adopta.Infrastructure.Tenancy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,6 +52,15 @@ public static class DependencyInjection
         services.AddScoped<IAdoptionAuditService, InMemoryAdoptionAuditService>();
         services.AddScoped<IAdoptionSecurityAuditService, InMemoryAdoptionSecurityAuditService>();
         services.AddScoped<IApplicationRegistrationService, InMemoryApplicationRegistrationService>();
+
+        services.AddScoped<ITenantRepository, InMemoryTenantRepository>();
+        services.AddScoped<ITenantApplicationRepository, InMemoryTenantApplicationRepository>();
+        services.AddScoped<IAdoptionUserRepository, InMemoryAdoptionUserRepository>();
+        services.AddScoped<IRoleRepository, InMemoryRoleRepository>();
+        services.AddScoped<ITenantMappingRepository, InMemoryTenantMappingRepository>();
+        services.AddScoped<IAuthenticatedUserMappingRepository, InMemoryAuthenticatedUserMappingRepository>();
+        services.AddScoped<IAuditEventRepository, InMemoryAuditEventRepository>();
+        services.AddScoped<ISecurityAuditEventRepository, InMemorySecurityAuditEventRepository>();
 
         return services;
     }
