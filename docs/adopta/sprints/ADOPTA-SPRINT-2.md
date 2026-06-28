@@ -1,4 +1,4 @@
-# ADOPTA-SPRINT-2 - Runtime SDK, Element Anchoring, Content Model, and Delivery Contract
+# ADOPTA-SPRINT-2 - Runtime SDK, Element Anchoring, Content Model, Delivery Contract, and Runtime Budgets
 
 ## Sprint intent
 
@@ -312,4 +312,84 @@ rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.ya
 
 ### Next recommended slice
 
-Close Sprint 2 with a final review and acceptance summary, then plan Sprint 3 for Adoption Studio and authoring foundations without starting implementation until approved.
+Close Sprint 2 with the runtime event contract, accessibility baseline, and performance budgets, then complete a final review before planning Sprint 3.
+
+## Slice 6 - Runtime event contract, accessibility, and performance budgets
+
+### Requirement IDs covered
+
+- `FR-RUN-006` - Added privacy-safe runtime event contract types for structural runtime events.
+- `FR-RUN-007` - Added an in-memory runtime event queue with typed safe failure behavior.
+- `FR-RUN-008` - Added runtime accessibility baseline constants for future renderer expectations.
+- `FR-RUN-009` - Added conservative runtime performance budget constants.
+- `NFR-SEC-1` - Runtime events do not capture field values, form values, raw DOM text, headers, tokens, HMRC values, tax values, property data, user-entered values, or personal identifiers.
+- `NFR-TEST-1` - Added TypeScript tests for event validation, queue behavior, accessibility constants, and runtime budgets.
+
+### Scope delivered
+
+- Added explicit initial runtime event types:
+  - `runtime.initialized`;
+  - `content.validated`;
+  - `anchor.resolved`;
+  - `anchor.missing`;
+  - `content.suppressed`;
+  - `runtime.error`.
+- Added runtime event and event envelope contracts with tenant, application, session, event id, event body, and UTC timestamp fields.
+- Added an in-memory runtime event queue with validation, FIFO drain behavior, and capacity enforcement.
+- Added accessibility contract constants for keyboard operation, focus management, reduced motion, ARIA labelling, colour contrast, and escape/dismiss behavior.
+- Added runtime budget constants for SDK size target, synchronous initialization, anchor resolution batch timing, and event queue capacity.
+- Exported event, accessibility, and budget contracts from the runtime SDK package.
+
+### Assumptions
+
+Runtime events are structural contract objects only. They can describe runtime state transitions and outcomes, but they must not contain sensitive host application data or user-entered values.
+
+The event queue is an in-memory foundation seam only. It performs no network calls, persistence, analytics dispatch, beacon dispatch, or fetch transport.
+
+Accessibility and performance constants document baseline expectations for future runtime rendering work. They do not implement a renderer in this sprint.
+
+### Explicitly not built
+
+- Analytics pipeline.
+- Event Hubs or ClickHouse.
+- Network event sender, beacon transport, or fetch transport.
+- Real renderer, tooltip renderer, walkthrough renderer, checklist renderer, or banner renderer.
+- Browser extension.
+- Property MTD integration.
+- Adoption Studio.
+- AI.
+- EF migrations or production database infrastructure.
+
+### Commands to run
+
+```powershell
+pnpm typecheck
+pnpm build
+pnpm test
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+rg "\b(input|textarea|form|token|claim|header|HMRC|tax|property|field|personal)\b|localStorage|sessionStorage|cookie|innerText|innerHTML|fetch|XMLHttpRequest" packages/runtime-sdk/src/events packages/runtime-sdk/src/a11y packages/runtime-sdk/src/runtime/RuntimeBudget.ts packages/runtime-sdk/tests/runtimeEvents.test.ts packages/runtime-sdk/tests/runtimeBudget.test.ts
+```
+
+### Known limitations
+
+- Runtime events are not sent, persisted, aggregated, or analyzed.
+- No analytics pipeline, Event Hubs, ClickHouse, or network transport exists.
+- Accessibility constants are not yet backed by a renderer.
+- Performance budgets are contract targets and are not yet enforced by bundle-size tooling.
+
+### Sprint 2 completion checklist
+
+- Runtime SDK contract foundation completed.
+- Element anchoring foundation completed with deterministic `data-adopt-id` resolution.
+- Experience and content model completed.
+- Runtime delivery bundle contract boundary completed.
+- Local runtime demo host completed.
+- Runtime event contract, accessibility baseline, and performance budget constants completed.
+- Renderer, analytics pipeline, browser extension, Adoption Studio, AI, Property MTD integration, and production database infrastructure remain intentionally out of scope.
+
+### Next recommended sprint
+
+Plan ADOPTA-SPRINT-3 for Adoption Studio and authoring foundations, including content authoring workflows, governance, versioning, and publishing contract design. Do not start implementation until Sprint 3 scope is approved.
