@@ -26,6 +26,7 @@ export {
   createRuntimeFailureResult,
   withRuntimeErrorBoundary
 } from "./runtime/RuntimeErrorBoundary";
+export { runtimePerformanceBudgets } from "./runtime/RuntimeBudget";
 export {
   AnchorResolver,
   type AnchorResolverOptions
@@ -65,3 +66,32 @@ export {
   type ContentValidationIssueCode,
   type ContentValidationResult
 } from "./content/ContentValidation";
+export { runtimeEventTypes, isRuntimeEventType, type RuntimeEventType } from "./events/EventType";
+export {
+  validateRuntimeEvent,
+  type RuntimeEvent,
+  type RuntimeEventMetadata,
+  type RuntimeEventMetadataValue,
+  type RuntimeEventOutcome,
+  type RuntimeEventValidationIssue,
+  type RuntimeEventValidationIssueCode,
+  type RuntimeEventValidationResult
+} from "./events/RuntimeEvent";
+export {
+  createRuntimeEventEnvelope,
+  validateRuntimeEventEnvelope,
+  type RuntimeEventEnvelope,
+  type RuntimeEventEnvelopeInput,
+  type RuntimeEventEnvelopeValidationIssue,
+  type RuntimeEventEnvelopeValidationIssueCode,
+  type RuntimeEventEnvelopeValidationResult
+} from "./events/EventEnvelope";
+export {
+  InMemoryRuntimeEventQueue,
+  type RuntimeEventQueueFailure,
+  type RuntimeEventQueueFailureCode,
+  type RuntimeEventQueueOptions,
+  type RuntimeEventQueueResult,
+  type RuntimeEventQueueSuccess
+} from "./events/EventQueue";
+export { runtimeAccessibilityContract } from "./a11y/AccessibilityContract";
