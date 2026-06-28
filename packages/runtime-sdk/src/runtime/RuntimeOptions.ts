@@ -1,3 +1,4 @@
+import type { AnchorDescriptor } from "../anchors/AnchorDescriptor";
 import type { RuntimeLogger } from "./RuntimeLogger";
 
 export type RuntimeEnvironment = "development" | "test" | "production";
@@ -8,11 +9,6 @@ export interface RuntimeLifecycleHooks {
   readonly beforeStart?: () => void;
 }
 
-// Type placeholder only. Element anchoring behavior is intentionally deferred.
-export interface RuntimeAnchorPlaceholder {
-  readonly key: string;
-}
-
 export interface AdoptaRuntimeOptions {
   readonly tenantId: string;
   readonly applicationId: string;
@@ -21,6 +17,6 @@ export interface AdoptaRuntimeOptions {
   readonly channel?: RuntimeChannel;
   readonly logger?: RuntimeLogger;
   readonly hooks?: RuntimeLifecycleHooks;
-  readonly anchors?: readonly RuntimeAnchorPlaceholder[];
+  readonly anchors?: readonly AnchorDescriptor[];
   readonly noOp?: boolean;
 }
