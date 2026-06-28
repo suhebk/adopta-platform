@@ -69,8 +69,8 @@ function validateOptions(options: AdoptaRuntimeOptions): string | undefined {
     return "apiBaseUrl must be omitted or non-empty.";
   }
 
-  if (options.anchors?.some((anchor) => isBlank(anchor.key)) === true) {
-    return "Anchor placeholders must use non-empty keys.";
+  if (options.anchors?.some((anchor) => anchor.strategy !== "data-adopt-id" || isBlank(anchor.value)) === true) {
+    return "Anchor descriptors must use the supported strategy and non-empty values.";
   }
 
   return undefined;

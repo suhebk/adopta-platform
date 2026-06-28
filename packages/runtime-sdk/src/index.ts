@@ -7,8 +7,7 @@ export type {
   AdoptaRuntimeOptions,
   RuntimeChannel,
   RuntimeEnvironment,
-  RuntimeLifecycleHooks,
-  RuntimeAnchorPlaceholder
+  RuntimeLifecycleHooks
 } from "./runtime/RuntimeOptions";
 export type { AdoptaRuntimeContext } from "./runtime/RuntimeContext";
 export type {
@@ -27,3 +26,24 @@ export {
   createRuntimeFailureResult,
   withRuntimeErrorBoundary
 } from "./runtime/RuntimeErrorBoundary";
+export {
+  AnchorResolver,
+  type AnchorResolverOptions
+} from "./anchors/AnchorResolver";
+export {
+  DataAdoptIdResolver,
+  type DataAdoptIdResolverOptions
+} from "./anchors/DataAdoptIdResolver";
+export type {
+  AnchorDescriptor,
+  AnchorStrategy,
+  DataAdoptIdAnchorDescriptor,
+  UnknownAnchorDescriptor
+} from "./anchors/AnchorDescriptor";
+export {
+  createAnchorFailure,
+  type AnchorResolutionFailure,
+  type AnchorResolutionFailureCode,
+  type AnchorResolutionResult,
+  type AnchorResolutionSuccess
+} from "./anchors/AnchorResolution";

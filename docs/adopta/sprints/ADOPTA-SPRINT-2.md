@@ -66,3 +66,64 @@ rg "net9\.0" src tests docs .github package.json pnpm-workspace.yaml tsconfig.ba
 ### Next recommended slice
 
 Add the element anchoring foundation and content/experience model types, keeping rendering, delivery APIs, analytics, and Property MTD integration out of scope until their dedicated slices.
+
+## Slice 2 - Element anchoring foundation
+
+### Requirement IDs covered
+
+- `FR-ELM-001` - Added the first explicit anchor descriptor contract for stable first-party element markers.
+- `FR-ELM-002` - Added deterministic runtime resolution for the approved first-party anchor strategy.
+- `FR-ELM-003` - Missing, duplicate, invalid, unsupported, unavailable-DOM, and resolver-error cases fail safely without uncaught host errors.
+- `FR-MTD-003` - Established `data-adopt-id` as the future first-party stable anchor convention, without modifying the Property MTD repository.
+- `NFR-SEC-1` - Resolver does not capture input values, form values, raw DOM text, tokens, headers, or sensitive host data.
+- `NFR-TEST-1` - Added TypeScript unit tests for anchor resolution behavior.
+
+### Scope delivered
+
+- Added privacy-safe anchor descriptor and resolution result types.
+- Added `DataAdoptIdResolver` for exact `data-adopt-id` matching.
+- Added `AnchorResolver` orchestration that validates descriptors and routes only the supported strategy.
+- Replaced the Slice 1 placeholder anchor type in runtime options with the real `AnchorDescriptor`.
+- Exported anchor APIs from the runtime SDK package.
+- Added ADR-002 for the runtime anchor contract.
+
+### Assumptions
+
+`data-adopt-id` is the only real anchor strategy in this slice. The contract is intentionally explicit so first-party applications can choose stable semantic identifiers without exposing page content or sensitive values.
+
+The resolver receives a DOM root from the host runtime or uses `globalThis.document` when available. It reads only `data-adopt-id` attributes and never mutates the DOM.
+
+### Explicitly not built
+
+- CSS selector, XPath, text, aria, positional, AI, or vision fallback strategies.
+- Tooltip or walkthrough rendering.
+- Delivery bundle API.
+- Demo host.
+- Runtime event pipeline or analytics.
+- Browser extension.
+- Property MTD integration.
+- Adoption Studio.
+- Production database infrastructure.
+
+### Commands to run
+
+```powershell
+pnpm test
+pnpm typecheck
+pnpm build
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+```
+
+### Known limitations
+
+- Anchor resolution is deterministic but intentionally narrow.
+- No authoring capture flow exists yet.
+- No anchor-health event pipeline exists yet.
+- No content model, delivery bundle contract, renderer, or demo host exists yet.
+
+### Next recommended slice
+
+Add the experience/content model and delivery bundle contract types while continuing to avoid rendering, analytics, AI, browser extension, Adoption Studio, and Property MTD integration.
