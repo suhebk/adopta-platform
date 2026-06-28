@@ -187,3 +187,69 @@ rg "net9\.0" src tests docs .github package.json pnpm-workspace.yaml tsconfig.ba
 ### Next recommended slice
 
 Add runtime API/delivery contract boundaries and local validation fixtures, still without implementing a delivery service, renderer, analytics pipeline, browser extension, Adoption Studio, or Property MTD integration.
+
+## Slice 4 - Runtime delivery bundle contract
+
+### Requirement IDs covered
+
+- `FR-DEL-012` - Added delivery bundle contract boundaries for versioned runtime content bundles.
+- `FR-DEL-013` - Added tenant/application/environment/channel-scoped lookup contracts without implementing runtime targeting evaluation.
+- `FR-IDN-031` - Delivery bundle lookup enforces tenant scope and denies cross-tenant access safely.
+- `NFR-SEC-1` - Delivery contract seams avoid form values, input values, user profile data, tax/HMRC data, tokens, raw DOM content, and network calls.
+- `NFR-TEST-1` - Added contract, fixture, and isolation tests for delivery bundle lookup behavior.
+
+### Scope delivered
+
+- Added .NET Application-layer delivery contracts:
+  - `DeliveryBundle`;
+  - `DeliveryChannel`;
+  - `DeliveryBundleLookupRequest`;
+  - `DeliveryBundleLookupResult`;
+  - `IDeliveryBundleRepository`.
+- Added `InMemoryDeliveryBundleRepository` as a non-durable Sprint 2 foundation seam.
+- Registered the in-memory repository in `AddAdoptaInfrastructure()`.
+- Added local JSON fixtures for delivery bundle validation tests.
+- Added tests for valid/invalid lookup requests, matching bundle lookup, missing bundles, cross-tenant denial, scope-safe not-found behavior, and fixture validation.
+
+### Assumptions
+
+The in-memory delivery repository exists only to validate contract boundaries and tenant/application/environment/channel scoping. It is not durable storage and is not production persistence.
+
+Missing bundles return a typed not-found result. Cross-tenant requests return a typed access-denied result and do not reveal whether another tenant, application, environment, or channel has a bundle.
+
+### Explicitly not built
+
+- Real API endpoint.
+- CDN integration.
+- Blob Storage.
+- Renderer.
+- Demo host.
+- Runtime event pipeline or analytics.
+- AI.
+- Browser extension.
+- Property MTD integration.
+- Adoption Studio.
+- EF migrations, `DbContext`, connection strings, or production database infrastructure.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm test
+pnpm typecheck
+pnpm build
+rg "net9\.0" src tests docs .github package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+```
+
+### Known limitations
+
+- Delivery bundle repository is in-memory and non-durable.
+- No delivery HTTP API exists yet.
+- No CDN, Blob Storage, cache invalidation, or runtime fetch behavior exists yet.
+- Content remains contract-only and is not rendered.
+
+### Next recommended slice
+
+Add local runtime SDK integration fixtures or a small contract-only runtime loading boundary, while still avoiding a real delivery API, renderer, analytics, browser extension, Adoption Studio, and Property MTD integration.
