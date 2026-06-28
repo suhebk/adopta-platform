@@ -47,3 +47,21 @@ export {
   type AnchorResolutionResult,
   type AnchorResolutionSuccess
 } from "./anchors/AnchorResolution";
+export { contentTypes, isContentType, type ContentType } from "./content/ContentType";
+export type {
+  CalloutContentItem,
+  ChecklistContentItem,
+  ContentItem,
+  ContentItemBase,
+  TooltipContentItem,
+  WalkthroughContentItem
+} from "./content/ContentItem";
+export type { ContentBundle } from "./content/ContentBundle";
+export type { TargetingPlaceholder } from "./content/TargetingPlaceholder";
+export {
+  validateContentBundle,
+  validateContentItem,
+  type ContentValidationIssue,
+  type ContentValidationIssueCode,
+  type ContentValidationResult
+} from "./content/ContentValidation";

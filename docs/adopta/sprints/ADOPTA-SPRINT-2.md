@@ -127,3 +127,63 @@ rg "net9\.0" src tests docs .github package.json pnpm-workspace.yaml tsconfig.ba
 ### Next recommended slice
 
 Add the experience/content model and delivery bundle contract types while continuing to avoid rendering, analytics, AI, browser extension, Adoption Studio, and Property MTD integration.
+
+## Slice 3 - Experience and content model
+
+### Requirement IDs covered
+
+- `FR-AUT-010` - Added contract-only content items for future walkthrough/checklist-style experiences.
+- `FR-DEL-012` - Added versioned, tenant-aware, application-aware, environment-aware, and channel-aware content bundle contracts.
+- `FR-DEL-013` - Added a targeting placeholder contract without implementing targeting evaluation.
+- `FR-ELM-001` - Content items reuse the Slice 2 `AnchorDescriptor` contract instead of duplicating anchor semantics.
+- `NFR-SEC-1` - Content contracts and validation avoid form values, input values, user profiles, tax/HMRC data, tokens, and raw DOM content.
+- `NFR-TEST-1` - Added TypeScript and .NET tests for content item, bundle, validation, duplicate IDs, anchors, and targeting placeholder shape.
+
+### Scope delivered
+
+- Added TypeScript runtime SDK contracts for content type, content item, content bundle, targeting placeholder, and validation.
+- Added explicit initial content types: `tooltip`, `callout`, `checklist`, and `walkthrough`.
+- Added safe typed validation issues for normal invalid content.
+- Added .NET Application-layer mirror records and validator for runtime content contracts.
+- Added tests for valid and invalid item/bundle contracts, duplicate item IDs, invalid anchors, and targeting placeholder shape.
+
+### Assumptions
+
+Content bundles are contract-only in this slice. They can be validated locally without network calls and are prepared for future delivery design, but no delivery endpoint, persistence model, CDN behavior, or runtime loading is implemented.
+
+Targeting is intentionally represented as a placeholder shape only. No segment, route, user, event, or context evaluation is implemented.
+
+### Explicitly not built
+
+- Tooltip, walkthrough, checklist, banner, or callout renderer.
+- Delivery API or delivery service.
+- Demo host.
+- Runtime event pipeline or analytics.
+- AI.
+- Browser extension.
+- Property MTD integration.
+- Adoption Studio.
+- EF migrations, database schema, or production database infrastructure.
+
+### Commands to run
+
+```powershell
+pnpm test
+pnpm typecheck
+pnpm build
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+```
+
+### Known limitations
+
+- Content contracts are not rendered.
+- Content bundles are not fetched from or served by an API.
+- Targeting is not evaluated.
+- No authoring, publishing, analytics, or event pipeline behavior exists yet.
+
+### Next recommended slice
+
+Add runtime API/delivery contract boundaries and local validation fixtures, still without implementing a delivery service, renderer, analytics pipeline, browser extension, Adoption Studio, or Property MTD integration.
