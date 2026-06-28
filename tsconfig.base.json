@@ -10,6 +10,7 @@
     "noImplicitOverride": true,
     "useDefineForClassFields": true,
     "forceConsistentCasingInFileNames": true,
+    "types": [],
     "skipLibCheck": true
   }
 }

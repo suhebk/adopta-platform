@@ -8,6 +8,19 @@ importers:
 
   .: {}
 
+  apps/runtime-demo:
+    dependencies:
+      '@adopta/runtime-sdk':
+        specifier: workspace:*
+        version: link:../../packages/runtime-sdk
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9
+
   packages/runtime-sdk:
     devDependencies:
       typescript:

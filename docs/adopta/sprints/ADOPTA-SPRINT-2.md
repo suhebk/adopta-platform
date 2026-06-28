@@ -253,3 +253,63 @@ rg "net9\.0" src tests docs .github package.json pnpm-workspace.yaml tsconfig.ba
 ### Next recommended slice
 
 Add local runtime SDK integration fixtures or a small contract-only runtime loading boundary, while still avoiding a real delivery API, renderer, analytics, browser extension, Adoption Studio, and Property MTD integration.
+
+## Slice 5 - Local runtime demo host
+
+### Requirement IDs covered
+
+- `FR-DEL-010` - Added a local-only host that initialises the runtime SDK without blocking or depending on external services.
+- `FR-ELM-001` - Demo content uses stable first-party `data-adopt-id` anchors.
+- `FR-ELM-003` - Smoke tests prove missing anchors fail safely through the existing resolver.
+- `FR-DEL-012` - Demo content uses local content bundle fixtures based on the existing contract.
+- `NFR-SEC-1` - Demo host avoids external calls and does not collect form values, tokens, raw user-entered data, or sensitive host data.
+- `NFR-TEST-1` - Added smoke tests for static anchors, content validation, anchor resolution, missing anchor behavior, and capture-safety.
+
+### Scope delivered
+
+- Added `apps/runtime-demo` as a local-only pnpm workspace app.
+- Added a static demo page with `data-adopt-id` anchors.
+- Added local demo content fixtures using existing runtime SDK content contracts.
+- Initialised the SDK in no-op mode against the demo page.
+- Validated local content and resolved anchors using existing SDK helpers.
+- Added smoke tests for the demo host.
+
+### Assumptions
+
+The demo host is a local development aid only. It does not fetch delivery bundles, call APIs, load CDN assets, send events, or integrate with Property MTD. Diagnostics are static local status messages and are not production guidance UI.
+
+### Explicitly not built
+
+- Real renderer, tooltip renderer, walkthrough renderer, checklist renderer, banner renderer, or overlays.
+- Runtime event pipeline.
+- Real delivery API endpoint.
+- CDN or Blob Storage.
+- Analytics.
+- AI.
+- Browser extension.
+- Property MTD integration.
+- Adoption Studio.
+- EF migrations or production database infrastructure.
+
+### Commands to run
+
+```powershell
+pnpm test
+pnpm typecheck
+pnpm build
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+```
+
+### Known limitations
+
+- Demo host is local-only and static.
+- No real runtime UI is rendered.
+- No delivery bundle fetch, cache, or API behavior exists.
+- No analytics, event pipeline, browser extension, Adoption Studio, or Property MTD integration exists.
+
+### Next recommended slice
+
+Close Sprint 2 with a final review and acceptance summary, then plan Sprint 3 for Adoption Studio and authoring foundations without starting implementation until approved.
