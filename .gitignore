@@ -3,6 +3,12 @@ bin/
 obj/
 TestResults/
 
+# Node / TypeScript
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
 # Visual Studio / VS Code
 .vs/
 .vscode/

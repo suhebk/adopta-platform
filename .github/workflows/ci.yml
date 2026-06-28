@@ -30,3 +30,26 @@ jobs:
 
       - name: Test
         run: dotnet test Adopta.slnx --configuration Release --no-build
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install TypeScript workspace
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Type-check TypeScript workspace
+        run: pnpm typecheck
+
+      - name: Build TypeScript workspace
+        run: pnpm build
+
+      - name: Test TypeScript workspace
+        run: pnpm test
