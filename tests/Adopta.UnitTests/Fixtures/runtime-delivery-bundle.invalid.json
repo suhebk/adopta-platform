@@ -1,0 +1,26 @@
+{
+  "bundleId": "",
+  "tenantId": "",
+  "applicationId": "",
+  "environment": "prod",
+  "channel": "live",
+  "version": "",
+  "generatedAtUtc": "2026-06-28T12:00:00Z",
+  "items": [
+    {
+      "id": "",
+      "type": "tooltip",
+      "version": "",
+      "title": "",
+      "anchor": {
+        "strategy": "css",
+        "value": ".submit"
+      },
+      "targeting": {
+        "mode": "evaluate-now",
+        "segments": [],
+        "pageKeys": []
+      }
+    }
+  ]
+}
