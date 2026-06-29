@@ -41,7 +41,7 @@ public static class DependencyInjection
             services.Configure<EntraTenantResolutionOptions>(_ => { });
         }
 
-        ConfigurePersistence(services, configuration);
+        var useEfPersistence = ConfigurePersistence(services, configuration);
 
         services.AddScoped<AdoptionTenantContext>();
         services.AddScoped<IAdoptionTenantContext>(serviceProvider =>
@@ -64,22 +64,33 @@ public static class DependencyInjection
         services.AddScoped<ITenantApplicationRepository, InMemoryTenantApplicationRepository>();
         services.AddScoped<IAdoptionUserRepository, InMemoryAdoptionUserRepository>();
         services.AddScoped<IRoleRepository, InMemoryRoleRepository>();
-        services.AddScoped<ITenantMappingRepository, InMemoryTenantMappingRepository>();
-        services.AddScoped<IAuthenticatedUserMappingRepository, InMemoryAuthenticatedUserMappingRepository>();
+        if (useEfPersistence)
+        {
+            services.AddScoped<ITenantMappingRepository, EfTenantMappingRepository>();
+            services.AddScoped<IAuthenticatedUserMappingRepository, EfAuthenticatedUserMappingRepository>();
+            services.AddScoped<ISecurityAuditEventRepository, EfSecurityAuditEventRepository>();
+            services.AddScoped<IAuthoredContentRepository, EfAuthoredContentRepository>();
+        }
+        else
+        {
+            services.AddScoped<ITenantMappingRepository, InMemoryTenantMappingRepository>();
+            services.AddScoped<IAuthenticatedUserMappingRepository, InMemoryAuthenticatedUserMappingRepository>();
+            services.AddScoped<ISecurityAuditEventRepository, InMemorySecurityAuditEventRepository>();
+            services.AddScoped<IAuthoredContentRepository, InMemoryAuthoredContentRepository>();
+        }
+
         services.AddScoped<IAuditEventRepository, InMemoryAuditEventRepository>();
-        services.AddScoped<ISecurityAuditEventRepository, InMemorySecurityAuditEventRepository>();
         services.AddScoped<IDeliveryBundleRepository, InMemoryDeliveryBundleRepository>();
-        services.AddScoped<IAuthoredContentRepository, InMemoryAuthoredContentRepository>();
 
         return services;
     }
 
-    private static void ConfigurePersistence(IServiceCollection services, IConfiguration? configuration)
+    private static bool ConfigurePersistence(IServiceCollection services, IConfiguration? configuration)
     {
         if (configuration is null)
         {
             services.Configure<AdoptaPersistenceOptions>(_ => { });
-            return;
+            return false;
         }
 
         var section = configuration.GetSection(AdoptaPersistenceOptions.SectionName);
@@ -103,7 +114,7 @@ public static class DependencyInjection
 
         if (!options.Enabled)
         {
-            return;
+            return false;
         }
 
         if (!string.Equals(options.Provider, "SqlServer", StringComparison.Ordinal))
@@ -124,5 +135,6 @@ public static class DependencyInjection
 
         services.AddDbContext<AdoptaDbContext>(dbContextOptions =>
             dbContextOptions.UseSqlServer(connectionString));
+        return true;
     }
 }
