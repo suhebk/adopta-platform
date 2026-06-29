@@ -7,5 +7,8 @@ public sealed record RuntimeContentItem(
     string Title,
     string? Body,
     RuntimeAnchorDescriptor? Anchor,
-    RuntimeTargetingPlaceholder? Targeting);
+    RuntimeTargetingPlaceholder? Targeting,
+    RuntimeExperienceMetadata? Experience = null,
+    RuntimeChecklistContent? Checklist = null,
+    RuntimeWalkthroughContent? Walkthrough = null);
 

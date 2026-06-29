@@ -131,5 +131,33 @@ describe("content contract", () => {
       ]
     });
   });
+
+  it("keeps existing tooltip, callout, checklist, and walkthrough shapes compatible", () => {
+    const items: ContentItem[] = [
+      validItem,
+      {
+        ...validItem,
+        id: "callout-1",
+        type: "callout"
+      },
+      {
+        ...validItem,
+        id: "checklist-1",
+        type: "checklist"
+      },
+      {
+        ...validItem,
+        id: "walkthrough-1",
+        type: "walkthrough"
+      }
+    ];
+
+    for (const item of items) {
+      expect(validateContentItem(item)).toEqual({
+        ok: true,
+        issues: []
+      });
+    }
+  });
 });
 

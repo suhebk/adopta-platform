@@ -57,6 +57,39 @@ export type {
   TooltipContentItem,
   WalkthroughContentItem
 } from "./content/ContentItem";
+export type {
+  ChecklistContent,
+  ChecklistItem,
+  ChecklistStep
+} from "./content/ChecklistContent";
+export type {
+  WalkthroughContent,
+  WalkthroughStep
+} from "./content/WalkthroughContent";
+export {
+  rendererPlacementTokens,
+  isRendererPlacementToken,
+  type RendererPlacement,
+  type RendererPlacementToken
+} from "./content/RendererPlacement";
+export {
+  rendererThemeDensityTokens,
+  rendererThemeEmphasisTokens,
+  rendererThemeToneTokens,
+  isRendererThemeDensity,
+  isRendererThemeEmphasis,
+  isRendererThemeTone,
+  type RendererTheme,
+  type RendererThemeDensity,
+  type RendererThemeEmphasis,
+  type RendererThemeTone
+} from "./content/RendererTheme";
+export {
+  dismissBehaviorTokens,
+  isDismissBehaviorToken,
+  type DismissBehaviorToken,
+  type RuntimeExperienceMetadata
+} from "./content/RuntimeExperienceContent";
 export type { ContentBundle } from "./content/ContentBundle";
 export type { TargetingPlaceholder } from "./content/TargetingPlaceholder";
 export {
