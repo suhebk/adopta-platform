@@ -1,0 +1,21 @@
+@page "/studio"
+@using Adopta.Web.Studio
+
+<PageTitle>Adoption Studio</PageTitle>
+
+<section class="studio-shell">
+    <p class="eyebrow">@StudioNavigation.FoundationShellStatus</p>
+    <h1>Adoption Studio</h1>
+    <p>
+        Shell direction for authoring, review, publishing, and governance foundations.
+        This page is intentionally limited to navigation context for Sprint 3.
+    </p>
+
+    <dl>
+        @foreach (var item in StudioNavigation.Items)
+        {
+            <dt>@item.Label</dt>
+            <dd>@item.Description</dd>
+        }
+    </dl>
+</section>

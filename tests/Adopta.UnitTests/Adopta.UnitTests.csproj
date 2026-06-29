@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\Adopta.Domain\Adopta.Domain.csproj" />
     <ProjectReference Include="..\..\src\Adopta.Application\Adopta.Application.csproj" />
     <ProjectReference Include="..\..\src\Adopta.Infrastructure\Adopta.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Adopta.Web\Adopta.Web.csproj" />
   </ItemGroup>
 
 </Project>
