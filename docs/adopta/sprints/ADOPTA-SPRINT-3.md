@@ -215,3 +215,68 @@ rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.ya
 ### Next recommended slice
 
 Add publishing contract design and version-to-runtime bundle mapping boundaries, still without implementing production publishing infrastructure or a full authoring UI.
+
+## Slice 4 - Publishing contract design and runtime bundle mapping boundaries
+
+### Requirement IDs covered
+
+- `FR-AUT-014` - Added publishing command and result contracts for authored content.
+- `FR-AUT-015` - Added publish eligibility validation for authored content lifecycle states.
+- `FR-AUT-016` - Added version-to-runtime delivery bundle mapping seam.
+- `FR-AUT-017` - Added safe structural publishing audit record shape.
+- `FR-DEL-012` - Mapped approved authored content metadata to existing runtime content and delivery bundle contracts.
+- `NFR-SEC-1` - Publish results, mapped bundles, audit records, and errors avoid tokens, headers, raw claims, form/input values, raw content body, tax data, HMRC data, property data, and sensitive values.
+- `NFR-TEST-1` - Added tests for publish eligibility, typed failures, runtime bundle mapping, safe content key validation, and audit shape.
+
+### Scope delivered
+
+- Added `AuthoredContentPublishCommand`.
+- Added `AuthoredContentPublishResult` and publish status values.
+- Added publish eligibility validation allowing only `Approved` authored content versions.
+- Added `AuthoredContentRuntimeBundleMapper`.
+- Added `AuthoredContentPublishingAuditRecord`.
+- Added unit tests for lifecycle eligibility, safe failures, runtime bundle mapping, unsafe content key rejection, and safe audit metadata.
+
+### Assumptions
+
+Publishing in this slice is contract and mapping foundation only. It validates whether a version is eligible and maps approved metadata to an in-memory runtime delivery bundle contract, but it does not mutate authored content state or publish externally.
+
+The current authored content model has no body/content payload. Runtime bundle mapping therefore uses only structural metadata: content key, title, version, tenant, application, environment, channel, and generated timestamp.
+
+### Explicitly not built
+
+- Production publishing infrastructure.
+- CDN publishing or Blob Storage publishing.
+- Delivery API implementation.
+- Runtime renderer.
+- Full Adoption Studio UI or authoring screens.
+- AI assistant.
+- Analytics pipeline.
+- Event Hubs or ClickHouse.
+- Browser extension.
+- Property MTD integration.
+- EF Core, `DbContext`, EF migrations, or production database infrastructure.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+```
+
+### Known limitations
+
+- Publishing does not mutate authored content lifecycle state.
+- Publishing does not write to durable audit storage.
+- No delivery API, CDN, Blob Storage, or external publishing path exists.
+- Mapping supports the current minimal authored content model only.
+- No authoring UI or renderer behavior exists.
+
+### Next recommended slice
+
+Add an authoring/admin web shell direction and navigation foundation, or close Sprint 3 with a review if UI work should move to a separate explicitly approved slice.
