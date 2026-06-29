@@ -20,7 +20,12 @@ public sealed class PersistenceRegistrationTests
         AssertRegistration<IAuthoredContentRepository, InMemoryAuthoredContentRepository>(services);
         AssertRegistration<ITenantMappingRepository, InMemoryTenantMappingRepository>(services);
         AssertRegistration<IAuthenticatedUserMappingRepository, InMemoryAuthenticatedUserMappingRepository>(services);
+        AssertRegistration<IAuditEventRepository, InMemoryAuditEventRepository>(services);
         AssertRegistration<ISecurityAuditEventRepository, InMemorySecurityAuditEventRepository>(services);
+        AssertRegistration<IAuthoredContentLifecycleHistoryRepository, InMemoryAuthoredContentLifecycleHistoryRepository>(
+            services);
+        AssertRegistration<IAuthoredContentPublishingHistoryRepository, InMemoryAuthoredContentPublishingHistoryRepository>(
+            services);
         Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(AdoptaDbContext));
     }
 
@@ -43,9 +48,13 @@ public sealed class PersistenceRegistrationTests
         AssertRegistration<IAuthoredContentRepository, EfAuthoredContentRepository>(services);
         AssertRegistration<ITenantMappingRepository, EfTenantMappingRepository>(services);
         AssertRegistration<IAuthenticatedUserMappingRepository, EfAuthenticatedUserMappingRepository>(services);
+        AssertRegistration<IAuditEventRepository, EfAuditEventRepository>(services);
         AssertRegistration<ISecurityAuditEventRepository, EfSecurityAuditEventRepository>(services);
+        AssertRegistration<IAuthoredContentLifecycleHistoryRepository, EfAuthoredContentLifecycleHistoryRepository>(
+            services);
+        AssertRegistration<IAuthoredContentPublishingHistoryRepository, EfAuthoredContentPublishingHistoryRepository>(
+            services);
         Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(AdoptaDbContext));
-        AssertRegistration<IAuditEventRepository, InMemoryAuditEventRepository>(services);
         AssertRegistration<ITenantApplicationRepository, InMemoryTenantApplicationRepository>(services);
         AssertRegistration<IAdoptionUserRepository, InMemoryAdoptionUserRepository>(services);
         AssertRegistration<IRoleRepository, InMemoryRoleRepository>(services);

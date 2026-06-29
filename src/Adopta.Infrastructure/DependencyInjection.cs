@@ -68,18 +68,23 @@ public static class DependencyInjection
         {
             services.AddScoped<ITenantMappingRepository, EfTenantMappingRepository>();
             services.AddScoped<IAuthenticatedUserMappingRepository, EfAuthenticatedUserMappingRepository>();
+            services.AddScoped<IAuditEventRepository, EfAuditEventRepository>();
             services.AddScoped<ISecurityAuditEventRepository, EfSecurityAuditEventRepository>();
             services.AddScoped<IAuthoredContentRepository, EfAuthoredContentRepository>();
+            services.AddScoped<IAuthoredContentLifecycleHistoryRepository, EfAuthoredContentLifecycleHistoryRepository>();
+            services.AddScoped<IAuthoredContentPublishingHistoryRepository, EfAuthoredContentPublishingHistoryRepository>();
         }
         else
         {
             services.AddScoped<ITenantMappingRepository, InMemoryTenantMappingRepository>();
             services.AddScoped<IAuthenticatedUserMappingRepository, InMemoryAuthenticatedUserMappingRepository>();
+            services.AddScoped<IAuditEventRepository, InMemoryAuditEventRepository>();
             services.AddScoped<ISecurityAuditEventRepository, InMemorySecurityAuditEventRepository>();
             services.AddScoped<IAuthoredContentRepository, InMemoryAuthoredContentRepository>();
+            services.AddScoped<IAuthoredContentLifecycleHistoryRepository, InMemoryAuthoredContentLifecycleHistoryRepository>();
+            services.AddScoped<IAuthoredContentPublishingHistoryRepository, InMemoryAuthoredContentPublishingHistoryRepository>();
         }
 
-        services.AddScoped<IAuditEventRepository, InMemoryAuditEventRepository>();
         services.AddScoped<IDeliveryBundleRepository, InMemoryDeliveryBundleRepository>();
 
         return services;
