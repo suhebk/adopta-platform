@@ -6,6 +6,16 @@ public sealed class AuthoredContentItem : TenantScopedEntity
 {
     private readonly List<AuthoredContentVersion> _versions;
 
+    private AuthoredContentItem(
+        Guid id,
+        Guid tenantId,
+        Guid applicationId,
+        string contentKey,
+        string title)
+        : this(id, tenantId, applicationId, contentKey, title, null)
+    {
+    }
+
     public AuthoredContentItem(
         Guid id,
         Guid tenantId,
