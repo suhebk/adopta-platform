@@ -82,4 +82,80 @@ rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlS
 
 ### Next recommended slice
 
-Add a controlled publishing-to-delivery-store seam that stores successful publish bundle contracts in the existing in-memory delivery repository by default, without adding external storage, CDN, Blob Storage, renderer behaviour, or migration execution.
+Add a controlled runtime delivery follow-up that hardens delivery bundle persistence and operational validation without adding external storage, CDN, Blob Storage, renderer behaviour, or migration execution.
+
+## Slice 2 - Publishing-to-delivery store seam
+
+### Requirement IDs covered
+
+- `FR-AUT-016` - Reused the existing publishing workflow output and runtime delivery bundle contracts.
+- `FR-IDN-031` - Preserved tenant-scoped delivery storage and lookup through the existing delivery repository seam.
+- `FR-RBAC-001` - Kept publishing and runtime delivery route authorization on the existing explicit permission filters.
+- `NFR-SEC-1` - Stored and returned only safe runtime delivery bundle contract metadata/content and did not add tokens, headers, raw claims, form/input values, tax/HMRC/property data, connection strings, secrets, or sensitive values.
+- `NFR-TEST-1` - Added integration coverage proving successful publish stores a bundle, delivery API retrieval succeeds, invalid/failed/cross-tenant publish commands store nothing, and wrong delivery scopes return safe not-found responses.
+
+### Scope delivered
+
+- Updated the existing publish endpoint to store the generated `DeliveryBundle` through `IDeliveryBundleRepository` only after `AuthoredContentPublishingWorkflow` returns `Succeeded`.
+- Preserved success-only publishing history persistence.
+- Kept failed, denied, invalid, and cross-tenant publish commands non-persistent.
+- Kept the default delivery store in-memory.
+- Left SQL Server/EF persistence opt-in behaviour unchanged.
+- Added publish-to-delivery integration tests covering runtime delivery retrieval by tenant/application/environment/channel.
+
+### Assumptions
+
+The publishing workflow remains the source of the generated delivery bundle. The API layer commits that workflow output to the delivery repository only after successful publish validation.
+
+Delivery retrieval remains tenant-scoped through `IAdoptionTenantContext` and `IDeliveryBundleRepository.LookupAsync`. Cross-tenant and wrong-scope lookups return safe not-found responses and must not reveal whether another tenant, application, environment, or channel has a bundle.
+
+### Explicitly not built
+
+- Runtime renderer.
+- CDN publishing.
+- Blob Storage publishing.
+- Delivery external storage.
+- External publishing transport.
+- Analytics pipeline.
+- Event Hubs.
+- ClickHouse.
+- AI assistant.
+- Browser extension.
+- Property MTD integration.
+- Studio UI.
+- Production Azure deployment automation.
+- EF migrations.
+- Migration execution.
+- Database creation.
+- Automatic startup migration.
+- Live database health checks.
+- Real SQL Server connectivity checks.
+- Appsettings changes.
+- Deployment files.
+- Database schema changes.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+```
+
+### Known limitations
+
+- Delivery bundle storage remains in-memory by default.
+- No external delivery store exists.
+- No CDN, Blob Storage, renderer, analytics, or external publishing transport exists.
+- The publishing endpoint stores the bundle and history through separate repository calls; a future durable implementation should consider transactional consistency when SQL Server persistence is enabled.
+- Production database migration execution remains unapproved.
+
+### Next recommended slice
+
+Add controlled delivery persistence hardening and operational validation for runtime bundle storage, while keeping external storage, CDN, Blob Storage, renderer behaviour, migration execution, and production deployment automation out of scope until explicitly approved.

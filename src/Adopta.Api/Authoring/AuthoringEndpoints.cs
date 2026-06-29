@@ -3,6 +3,7 @@ using Adopta.Api.Tenancy;
 using Adopta.Application.Abstractions;
 using Adopta.Application.Abstractions.Authoring;
 using Adopta.Application.Abstractions.Persistence;
+using Adopta.Application.Abstractions.Runtime;
 using Adopta.Application.Authoring;
 using Adopta.Application.Identity;
 using Adopta.Application.Runtime;
@@ -272,6 +273,7 @@ public static class AuthoringEndpoints
         IAdoptionTenantContext tenantContext,
         IAuthoredContentRepository repository,
         IAuthoredContentPublishingHistoryRepository publishingHistoryRepository,
+        IDeliveryBundleRepository deliveryBundleRepository,
         CancellationToken cancellationToken)
     {
         try
@@ -296,6 +298,7 @@ public static class AuthoringEndpoints
             {
                 AuthoredContentPublishStatus.Succeeded => await PersistPublishDecisionAsync(
                     publishingHistoryRepository,
+                    deliveryBundleRepository,
                     result,
                     cancellationToken),
                 AuthoredContentPublishStatus.NotFound => Results.NotFound(PublishFailed("not_found", result.Issues)),
@@ -318,9 +321,27 @@ public static class AuthoringEndpoints
 
     private static async Task<IResult> PersistPublishDecisionAsync(
         IAuthoredContentPublishingHistoryRepository publishingHistoryRepository,
+        IDeliveryBundleRepository deliveryBundleRepository,
         AuthoredContentPublishResult result,
         CancellationToken cancellationToken)
     {
+        if (result.Bundle is null)
+        {
+            return Results.Problem(
+                title: "Publish command failed.",
+                detail: "The requested publish command could not be completed.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+
+        var storeResult = await deliveryBundleRepository.StoreAsync(result.Bundle, cancellationToken);
+        if (storeResult.Status != DeliveryBundleLookupStatus.Found)
+        {
+            return Results.Problem(
+                title: "Publish command failed.",
+                detail: "The requested publish command could not be completed.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+
         if (result.AuditRecord is not null)
         {
             await publishingHistoryRepository.AddAsync(result.AuditRecord, cancellationToken);
