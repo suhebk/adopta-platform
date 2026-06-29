@@ -64,6 +64,20 @@ The placeholders above must be replaced only by approved environment-specific va
 - Verify audit/security audit behavior.
 - Verify no sensitive values appear in logs or errors.
 
+## Configuration Validation and Readiness Contracts
+
+Persistence configuration validation is a startup/configuration guardrail only. It verifies whether persistence is disabled or whether explicit SQL Server opt-in configuration is present.
+
+The current readiness contract can report:
+
+- disabled;
+- invalid configuration;
+- configured but connectivity not checked.
+
+No database connectivity is performed by the Slice 4 readiness contracts. No SQL Server calls, database health checks, migrations, database creation, or startup database mutation are allowed in this slice.
+
+SQL Server persistence remains opt-in. Production secrets, connection string values, credentials, tenant secrets, tokens, and host details must come from secure configuration such as Key Vault or equivalent, not repository files.
+
 ## Rollback
 
 Rollback must be approval-gated and rehearsed before production. The rollback plan should specify:

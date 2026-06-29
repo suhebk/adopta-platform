@@ -239,3 +239,82 @@ rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests
 ### Next recommended slice
 
 Add persistence configuration validation and operational readiness contracts, still without implementing health checks, migration execution, production database deployment, or automatic startup database mutation.
+
+## Slice 4 - Persistence configuration validation and operational readiness contracts
+
+### Requirement IDs covered
+
+- `FR-IDN-030` - Added explicit persistence configuration validation contracts for tenant-owned persistence settings.
+- `FR-IDN-031` - Preserved tenant-isolated repository opt-in boundaries while centralising SQL Server persistence validation.
+- `FR-GOV-002` - Added safe operational readiness contract states for disabled, invalid, and configured-but-not-checked persistence.
+- `NFR-SEC-1` - Ensured validation failures and startup errors do not expose connection string values, credentials, tokens, headers, claims, tenant secrets, hostnames, or sensitive values.
+- `NFR-TEST-1` - Added validation/readiness tests and kept migration guardrail tests in place.
+
+### Scope delivered
+
+- Added typed persistence validation result and issue contracts.
+- Added safe persistence validation issue codes and non-sensitive messages.
+- Added a centralised persistence configuration validator.
+- Updated infrastructure DI to use centralised validation while preserving existing behaviour:
+  - disabled/default persistence continues to use in-memory repositories;
+  - EF repositories remain opt-in only;
+  - `AdoptaDbContext` is registered only when SQL Server persistence is explicitly enabled and valid;
+  - invalid enabled persistence fails with a generic non-sensitive configuration error.
+- Added operational readiness contract states:
+  - disabled;
+  - invalid configuration;
+  - configured but connectivity not checked.
+- Added tests for disabled/default validation, valid/invalid SQL Server settings, safe error messages, and readiness result shape.
+
+### Configuration and readiness assumptions
+
+Persistence remains disabled by default. SQL Server persistence remains explicitly opt-in through configuration and still requires a configured provider, connection string name, and configured connection string value.
+
+This slice validates configuration shape only. It does not perform database connectivity checks, SQL Server calls, health checks, migrations, database creation, automatic migration on startup, or any startup database mutation.
+
+Production secrets must not be stored in repository files. Production connection string values must come from secure configuration such as Key Vault or an equivalent secret store.
+
+### Explicitly not built
+
+- EF migrations.
+- Migration execution.
+- Automatic database creation.
+- Automatic migration on startup.
+- Production Azure SQL deployment.
+- Real database health checks.
+- Real SQL Server connectivity checks.
+- Repository replacement.
+- Full Adoption Studio UI or content editor.
+- Runtime renderer.
+- AI assistant.
+- Analytics pipeline.
+- Event Hubs or ClickHouse.
+- Browser extension.
+- Property MTD integration.
+- Large-scale infrastructure automation.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+rg "Microsoft.EntityFrameworkCore.Design" src tests
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests
+```
+
+### Known limitations
+
+- Readiness contracts are model-only and do not perform live database checks.
+- SQL Server persistence remains opt-in and disabled by default.
+- No migration files or EF Design package exist yet.
+- Database-level tenant isolation policy and RLS-style hardening remain future work.
+- Operational deployment automation remains future work.
+
+### Next recommended slice
+
+Add operational persistence readiness integration at the API/readiness boundary only after an approved design decides whether checks remain configuration-only or include a controlled, non-leaky database connectivity probe. Keep migrations, database creation, and production deployment automation separate from startup.
