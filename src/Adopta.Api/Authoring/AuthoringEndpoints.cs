@@ -2,6 +2,7 @@ using Adopta.Api.Auth;
 using Adopta.Api.Tenancy;
 using Adopta.Application.Abstractions;
 using Adopta.Application.Abstractions.Authoring;
+using Adopta.Application.Abstractions.Persistence;
 using Adopta.Application.Authoring;
 using Adopta.Application.Identity;
 using Adopta.Domain.Authoring;
@@ -115,6 +116,7 @@ public static class AuthoringEndpoints
         HttpContext httpContext,
         IAdoptionTenantContext tenantContext,
         IAuthoredContentRepository repository,
+        IAuthoredContentLifecycleHistoryRepository lifecycleHistoryRepository,
         CancellationToken cancellationToken)
     {
         var actorUserId = ResolveActorUserId(httpContext, tenantContext);
@@ -129,7 +131,9 @@ public static class AuthoringEndpoints
                     versionId,
                     actorUserId,
                     request?.RequestedAtUtc ?? DateTimeOffset.UtcNow),
-                cancellationToken));
+                cancellationToken),
+            lifecycleHistoryRepository,
+            cancellationToken);
     }
 
     private static Task<IResult> ApproveAsync(
@@ -139,6 +143,7 @@ public static class AuthoringEndpoints
         HttpContext httpContext,
         IAdoptionTenantContext tenantContext,
         IAuthoredContentRepository repository,
+        IAuthoredContentLifecycleHistoryRepository lifecycleHistoryRepository,
         CancellationToken cancellationToken)
     {
         return DecideAsync(
@@ -148,6 +153,7 @@ public static class AuthoringEndpoints
             httpContext,
             tenantContext,
             repository,
+            lifecycleHistoryRepository,
             AuthoredContentApprovalDecisionKind.Approve,
             cancellationToken);
     }
@@ -159,6 +165,7 @@ public static class AuthoringEndpoints
         HttpContext httpContext,
         IAdoptionTenantContext tenantContext,
         IAuthoredContentRepository repository,
+        IAuthoredContentLifecycleHistoryRepository lifecycleHistoryRepository,
         CancellationToken cancellationToken)
     {
         return DecideAsync(
@@ -168,6 +175,7 @@ public static class AuthoringEndpoints
             httpContext,
             tenantContext,
             repository,
+            lifecycleHistoryRepository,
             AuthoredContentApprovalDecisionKind.Reject,
             cancellationToken);
     }
@@ -179,6 +187,7 @@ public static class AuthoringEndpoints
         HttpContext httpContext,
         IAdoptionTenantContext tenantContext,
         IAuthoredContentRepository repository,
+        IAuthoredContentLifecycleHistoryRepository lifecycleHistoryRepository,
         AuthoredContentApprovalDecisionKind decision,
         CancellationToken cancellationToken)
     {
@@ -195,11 +204,15 @@ public static class AuthoringEndpoints
                     actorUserId,
                     decision,
                     request?.DecidedAtUtc ?? DateTimeOffset.UtcNow),
-                cancellationToken));
+                cancellationToken),
+            lifecycleHistoryRepository,
+            cancellationToken);
     }
 
     private static async Task<IResult> RunWorkflowAsync(
-        Func<Task<AuthoredContentLifecycleDecisionResult>> action)
+        Func<Task<AuthoredContentLifecycleDecisionResult>> action,
+        IAuthoredContentLifecycleHistoryRepository lifecycleHistoryRepository,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -207,12 +220,10 @@ public static class AuthoringEndpoints
 
             return result.Status switch
             {
-                AuthoredContentLifecycleDecisionStatus.Succeeded => Results.Ok(new AuthoringCommandResponse(
-                    true,
-                    "succeeded",
-                    null,
-                    ToAuditResponse(result.AuditRecord),
-                    [])),
+                AuthoredContentLifecycleDecisionStatus.Succeeded => await PersistLifecycleDecisionAsync(
+                    lifecycleHistoryRepository,
+                    result,
+                    cancellationToken),
                 AuthoredContentLifecycleDecisionStatus.NotFound => Results.NotFound(CommandFailed("not_found", result.Issues)),
                 _ => Results.BadRequest(CommandFailed("invalid_lifecycle_command", result.Issues))
             };
@@ -221,6 +232,31 @@ public static class AuthoringEndpoints
         {
             return Results.NotFound(CommandFailed("not_found", [Issue("authored_content_not_found", "content", "Authored content was not found.")]));
         }
+        catch
+        {
+            return Results.Problem(
+                title: "Authoring command failed.",
+                detail: "The requested authoring command could not be completed.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    private static async Task<IResult> PersistLifecycleDecisionAsync(
+        IAuthoredContentLifecycleHistoryRepository lifecycleHistoryRepository,
+        AuthoredContentLifecycleDecisionResult result,
+        CancellationToken cancellationToken)
+    {
+        if (result.AuditRecord is not null)
+        {
+            await lifecycleHistoryRepository.AddAsync(result.AuditRecord, cancellationToken);
+        }
+
+        return Results.Ok(new AuthoringCommandResponse(
+            true,
+            "succeeded",
+            null,
+            ToAuditResponse(result.AuditRecord),
+            []));
     }
 
     private static Guid ResolveActorUserId(

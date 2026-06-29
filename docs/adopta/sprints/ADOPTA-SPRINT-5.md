@@ -159,3 +159,88 @@ rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlS
 ### Next recommended slice
 
 Harden API authorization and operational readiness around the durable history path, including route permission verification and non-leaky operational diagnostics, while keeping migration execution separately approval-gated.
+
+## Slice 3 - Production API hardening, route authorization review, and command audit persistence usage
+
+### Requirement IDs covered
+
+- `FR-IDN-031` - Verified tenant context requirements remain applied to every existing authoring content endpoint.
+- `FR-RBAC-001` - Verified explicit authoring permission requirements on create, read/list, review, approve, and reject routes.
+- `FR-GOV-001` - Persisted successful lifecycle command audit records for request review, approve, and reject decisions.
+- `FR-GOV-002` - Covered publishing audit persistence at the existing application command/repository boundary without adding a publishing endpoint.
+- `FR-IDN-040` - Used the approved lifecycle/publishing history repository seams while preserving in-memory defaults and SQL Server opt-in behaviour.
+- `NFR-SEC-1` - Kept API errors, command responses, and audit records structural and non-sensitive.
+- `NFR-TEST-1` - Added route authorization, lifecycle audit persistence, and publishing audit boundary tests.
+
+### Scope delivered
+
+- Reviewed the existing `/authoring/content` route authorization mapping.
+- Preserved the existing permission mapping:
+  - create: `Authoring.Manage`;
+  - get/list: `Authoring.Read`;
+  - request review: `Authoring.Review`;
+  - approve: `Authoring.Approve`;
+  - reject/return to draft: `Authoring.Review`.
+- Persisted lifecycle history records through `IAuthoredContentLifecycleHistoryRepository` only when workflow decisions succeed.
+- Kept failed, denied, and invalid lifecycle commands non-persistent in this slice.
+- Added test coverage that missing tenant context is denied across all existing authoring content routes.
+- Added test coverage for wrong-permission denial across create, get, and list routes.
+- Added test coverage that successful request-review, approve, and reject commands create exactly one lifecycle history record.
+- Added test coverage that invalid lifecycle commands do not create lifecycle history records.
+- Added publishing audit persistence coverage at the existing application command/repository boundary only.
+
+### Assumptions
+
+Publishing remains an application-layer workflow and repository boundary in this slice. No publishing API endpoint is added.
+
+Lifecycle and publishing history records remain structural metadata only. They do not store content body, tokens, headers, raw claims, form values, input values, tax data, HMRC data, property data, connection strings, secrets, credentials, or sensitive values.
+
+Default behaviour remains in-memory. EF/durable persistence remains explicitly opt-in through the existing SQL Server persistence configuration.
+
+### Explicitly not built
+
+- EF migrations.
+- Migration execution.
+- Automatic database creation.
+- Automatic migration on startup.
+- Production Azure SQL deployment.
+- Deployment automation.
+- Real SQL Server connectivity checks.
+- Live health checks.
+- Appsettings changes.
+- Publishing API endpoint.
+- Studio UI.
+- Runtime renderer.
+- Delivery API.
+- Analytics pipeline.
+- AI assistant.
+- Event Hubs or ClickHouse.
+- Browser extension.
+- Property MTD integration.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+```
+
+### Known limitations
+
+- Publishing audit persistence is covered only at the application command/repository boundary because no publishing endpoint exists yet.
+- Lifecycle command audit persistence is written after successful workflow decisions only.
+- No real database has been created or modified.
+- No live SQL Server connectivity checks exist.
+- No production deployment automation exists.
+- Database-level tenant isolation and RLS-style hardening remain future work.
+
+### Next recommended slice
+
+Add controlled publishing API contract hardening or operational diagnostics around persistence readiness, while keeping migration execution and production database mutation separately approval-gated.

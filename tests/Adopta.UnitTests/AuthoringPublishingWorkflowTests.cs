@@ -3,6 +3,7 @@ using Adopta.Application.Authoring;
 using Adopta.Application.Runtime;
 using Adopta.Domain.Authoring;
 using Adopta.Infrastructure.Authoring;
+using Adopta.Infrastructure.Persistence;
 using Adopta.Infrastructure.Tenancy;
 
 namespace Adopta.UnitTests;
@@ -88,6 +89,25 @@ public sealed class AuthoringPublishingWorkflowTests
         Assert.Equal(DeliveryChannel.Published, audit.Channel);
         Assert.Equal("Succeeded", audit.Result);
         Assert.Equal(Now, audit.OccurredAtUtc);
+    }
+
+    [Fact]
+    public async Task Publishing_audit_record_can_be_persisted_through_repository_boundary()
+    {
+        var fixture = await BuildFixtureAsync(ContentLifecycleState.Approved);
+        var result = await fixture.Workflow.PublishAsync(fixture.Repository, BuildCommand(fixture));
+        var context = new AdoptionTenantContext();
+        context.SetTenant(fixture.TenantId);
+        var repository = new InMemoryAuthoredContentPublishingHistoryRepository(context);
+
+        await repository.AddAsync(result.AuditRecord!);
+        var records = await repository.ListAsync();
+
+        var record = Assert.Single(records);
+        Assert.Equal(fixture.TenantId, record.TenantId);
+        Assert.Equal(fixture.Content.Id, record.ContentId);
+        Assert.Equal(fixture.Version.Id, record.VersionId);
+        Assert.Equal("Succeeded", record.Result);
     }
 
     private static AuthoredContentPublishCommand BuildCommand(
