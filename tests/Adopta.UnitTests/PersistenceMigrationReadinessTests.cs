@@ -13,20 +13,37 @@ public sealed class PersistenceMigrationReadinessTests
     [InlineData("Database.Ensure")]
     public void Source_does_not_execute_migrations_or_create_databases(string forbiddenPattern)
     {
-        var files = EnumerateFiles("src", "tests");
+        var files = EnumerateFiles("src", "tests")
+            .Where(file => !IsApprovedMigrationSource(file));
 
         Assert.DoesNotContain(files, file =>
             File.ReadAllText(file).Contains(forbiddenPattern, StringComparison.Ordinal));
     }
 
     [Fact]
-    public void Ef_design_package_is_not_referenced()
+    public void Ef_design_package_is_tooling_only_when_referenced()
     {
         var projectFiles = EnumerateFiles("src", "tests")
             .Where(file => file.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase));
 
-        Assert.DoesNotContain(projectFiles, file =>
-            File.ReadAllText(file).Contains("Microsoft.EntityFrameworkCore.Design", StringComparison.Ordinal));
+        var references = projectFiles
+            .Select(file => new
+            {
+                File = file,
+                Content = File.ReadAllText(file)
+            })
+            .Where(project => project.Content.Contains("Microsoft.EntityFrameworkCore.Design", StringComparison.Ordinal))
+            .ToArray();
+
+        var infrastructureProject = Path.Combine(
+            RepositoryRoot,
+            "src",
+            "Adopta.Infrastructure",
+            "Adopta.Infrastructure.csproj");
+
+        var reference = Assert.Single(references);
+        Assert.Equal(infrastructureProject, reference.File);
+        Assert.Contains("PrivateAssets>all</PrivateAssets", reference.Content, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -89,6 +106,13 @@ public sealed class PersistenceMigrationReadinessTests
             .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 && !file.EndsWith(nameof(PersistenceMigrationReadinessTests) + ".cs", StringComparison.Ordinal));
+    }
+
+    private static bool IsApprovedMigrationSource(string file)
+    {
+        return file.Contains(
+            $"{Path.DirectorySeparatorChar}Persistence{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}",
+            StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

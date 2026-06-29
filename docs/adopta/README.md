@@ -31,6 +31,7 @@ Property Income MTD remains undisturbed while its remaining sprints continue. Ad
 | sprints | ADOPTA-SPRINT-1 | Sprint 1 scope, acceptance criteria, Codex prompt, and guardrails. |
 | persistence | Migration & Operations Planning | Migration strategy, database-boundary tenant isolation design, and persistence operations runbook. |
 | operations | Operational Readiness | Deployment readiness, observability/logging guidance, incident response, rollback, and tenant-isolation validation checklists. |
+| sprints | ADOPTA-SPRINT-5 | Controlled production enablement foundations, starting with reviewable EF schema baseline generation. |
 
 ## Important superseding decisions
 
