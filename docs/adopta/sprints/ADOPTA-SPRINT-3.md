@@ -280,3 +280,80 @@ rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.ya
 ### Next recommended slice
 
 Add an authoring/admin web shell direction and navigation foundation, or close Sprint 3 with a review if UI work should move to a separate explicitly approved slice.
+
+## Slice 5 - Admin/Web shell direction and navigation foundation
+
+### Requirement IDs covered
+
+- `FR-AUT-018` - Added Adoption Studio/Admin shell direction.
+- `FR-AUT-019` - Added centralized Studio navigation metadata for authoring/admin routes.
+- `FR-AUT-020` - Added permission-aware navigation metadata using existing permission keys.
+- `FR-AUT-021` - Added lightweight placeholder shell pages for Studio areas.
+- `NFR-SEC-1` - Shell pages and metadata do not expose sensitive values.
+- `NFR-TEST-1` - Added tests for route uniqueness, expected shell routes, permission mapping, and metadata completeness.
+
+### Scope delivered
+
+- Added central Studio navigation metadata with route, label, group, description, required permission, and shell status.
+- Added placeholder shell pages for:
+  - Studio overview;
+  - authored content;
+  - review queue;
+  - publishing;
+  - governance/audit.
+- Updated the Blazor navigation menu to use the metadata model.
+- Added Studio information architecture documentation.
+- Added unit tests for Studio navigation metadata.
+
+### Assumptions
+
+The Studio shell is a navigation and information architecture foundation only. It does not implement full authorization UX, authoring forms, editors, workflow actions, publishing actions, dashboards, or runtime rendering.
+
+Permission awareness in this slice is metadata-level only and references the existing `AdoptaPermissionKeys` catalog.
+
+### Explicitly not built
+
+- Full Adoption Studio UI.
+- Full authoring screens.
+- Content editor or drag-and-drop builder.
+- Approval workflow UI.
+- Publishing UI.
+- Runtime renderer.
+- AI assistant.
+- Analytics pipeline.
+- Event Hubs or ClickHouse.
+- Browser extension.
+- Property MTD integration.
+- EF Core, `DbContext`, EF migrations, or production database infrastructure.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+```
+
+### Known limitations
+
+- Studio pages are placeholder shells only.
+- No authoring editor, workflow UI, publishing UI, analytics, or renderer behavior exists.
+- Navigation permission awareness is metadata-level only.
+- No production database or infrastructure work is included.
+
+### Sprint 3 closeout checklist
+
+- Authoring lifecycle foundation completed.
+- Approval workflow foundation and authoring permissions completed.
+- Authoring API contract boundaries completed.
+- Publishing contract design and runtime bundle mapping boundaries completed.
+- Admin/Web shell direction and navigation foundation completed.
+- Full Adoption Studio UI, production publishing infrastructure, analytics, AI, browser extension, Property MTD integration, EF Core, migrations, and production database infrastructure remain intentionally out of scope.
+
+### Next recommended sprint
+
+Plan ADOPTA-SPRINT-4 for analytics, segmentation, runtime telemetry ingestion design, and closed-loop insights. Do not start implementation until Sprint 4 scope is approved.
