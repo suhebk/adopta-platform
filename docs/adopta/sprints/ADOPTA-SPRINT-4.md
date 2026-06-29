@@ -318,3 +318,93 @@ rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests
 ### Next recommended slice
 
 Add operational persistence readiness integration at the API/readiness boundary only after an approved design decides whether checks remain configuration-only or include a controlled, non-leaky database connectivity probe. Keep migrations, database creation, and production deployment automation separate from startup.
+
+## Slice 5 - Operational readiness foundation and Sprint 4 closeout
+
+### Requirement IDs covered
+
+- `FR-IDN-031` - Added tenant-isolation operational validation guidance for persistence and repository boundaries.
+- `FR-IDN-040` - Added audit and security audit operational conventions for safe structural metadata handling.
+- `FR-GOV-002` - Added deployment readiness, rollback, incident-response, and approval-gate documentation.
+- `NFR-SEC-1` - Added safe logging, observability, and secret-handling guidance.
+- `NFR-TEST-1` - Added documentation guardrail tests for operational readiness completeness.
+
+### Scope delivered
+
+- Added operational readiness documentation.
+- Added observability and safe logging guidance.
+- Added incident-response and rollback guidance.
+- Added tenant-isolation validation checklist.
+- Updated the Adopta documentation index.
+- Added documentation guardrail tests for:
+  - required operations docs;
+  - deployment, rollback, incident response, tenant isolation, persistence, audit, logging, secrets, and approval gates;
+  - current implemented behaviour versus future production steps;
+  - Sprint 4 closeout checklist presence;
+  - absence of obvious secret-marker examples in operations docs.
+
+### Operational assumptions
+
+Persistence remains disabled by default. SQL Server persistence remains opt-in through explicit configuration and secure secret sourcing.
+
+Operational documentation clearly separates current implemented behaviour from future production steps. Future EF migrations, database creation, live database health checks, production Azure SQL deployment, and deployment automation require explicit approval.
+
+### Explicitly not built
+
+- EF migrations.
+- Migration execution.
+- Automatic database creation.
+- Automatic migration on startup.
+- Production Azure SQL deployment.
+- Live database health checks.
+- Real SQL Server calls.
+- Repository replacement.
+- Full Adoption Studio UI or content editor.
+- Runtime renderer.
+- AI assistant.
+- Analytics pipeline.
+- Event Hubs or ClickHouse.
+- Browser extension.
+- Property MTD integration.
+- Large-scale infrastructure automation.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+rg "Microsoft.EntityFrameworkCore.Design" src tests
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests
+```
+
+### Known limitations
+
+- Sprint 4 remains an operational-readiness foundation, not production database deployment.
+- No EF migration files or EF Design package exist yet.
+- No live database health checks or SQL Server connectivity checks exist.
+- No production Azure SQL deployment automation exists.
+- Database-level tenant isolation and RLS-style hardening remain future work.
+
+### Sprint 4 closeout checklist
+
+- Persistence disabled by default: complete.
+- SQL Server persistence remains opt-in: complete.
+- EF model foundation added without migrations: complete.
+- Selected EF repositories are tenant-isolated and opt-in: complete.
+- Migration strategy and persistence guardrails documented: complete.
+- Persistence configuration validation and readiness contracts added: complete.
+- Operational readiness, observability, incident response, rollback, and tenant-isolation validation docs added: complete.
+- No production Azure SQL deployment: complete.
+- No live database health checks: complete.
+- No automatic database creation or startup migration: complete.
+- No real secrets or connection strings in repository files: complete.
+
+### Sprint 4 closeout status
+
+Sprint 4 is ready to close at the persistence, tenant-isolation hardening, and operational-readiness foundation level once verification passes. Remaining production-readiness work belongs in the next approved sprint or slice.
