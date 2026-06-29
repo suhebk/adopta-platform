@@ -1,0 +1,408 @@
+import { describe, expect, it } from "vitest";
+import {
+  Renderer,
+  type ContentBundle,
+  type ContentItem
+} from "../src";
+
+describe("runtime renderer foundation", () => {
+  it("renders tooltip content against a valid data-adopt-id anchor", () => {
+    const dom = new FakeDocument();
+    const anchor = dom.createHostElement("button", "billing.submit");
+    dom.body.appendChild(anchor);
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([tooltipItem()]));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.mount.renderedItemCount).toBe(1);
+      expect(result.mount.skippedItemCount).toBe(0);
+    }
+
+    const tooltip = findByAttribute(dom.body, "data-adopta-renderer", "tooltip");
+    expect(tooltip).toBeDefined();
+    expect(tooltip?.getAttribute("role")).toBe("tooltip");
+    expect(tooltip?.getAttribute("aria-label")).toBe("Submit return");
+  });
+
+  it("renders callout content as a safe announcement banner", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([calloutItem()]));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.mount.renderedItemCount).toBe(1);
+    }
+
+    const banner = findByAttribute(dom.body, "data-adopta-renderer", "banner");
+    expect(banner).toBeDefined();
+    expect(banner?.getAttribute("role")).toBe("status");
+    expect(banner?.getAttribute("aria-label")).toBe("Announcement");
+  });
+
+  it("fails safely when a tooltip anchor is missing", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([tooltipItem()]));
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "missing_anchor"
+    });
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
+  it("fails safely when a tooltip anchor is duplicated", () => {
+    const dom = new FakeDocument();
+    dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
+    dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
+
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([tooltipItem()]));
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "duplicate_anchor"
+    });
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
+  it("skips unsupported checklist and walkthrough content safely", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([checklistItem(), walkthroughItem()]));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.mount.renderedItemCount).toBe(0);
+      expect(result.mount.skippedItemCount).toBe(2);
+      expect(result.itemResults).toEqual([
+        expect.objectContaining({
+          ok: false,
+          code: "unsupported_content_type",
+          contentType: "checklist"
+        }),
+        expect.objectContaining({
+          ok: false,
+          code: "unsupported_content_type",
+          contentType: "walkthrough"
+        })
+      ]);
+    }
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
+  it("fails safely for an invalid bundle", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render({ ...bundle([]), bundleId: "" });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "invalid_bundle"
+    });
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
+  it("renders content as text instead of raw markup", () => {
+    const dom = new FakeDocument();
+    const anchor = dom.createHostElement("button", "billing.submit");
+    dom.body.appendChild(anchor);
+    const rawBody = "<strong>Do not parse me</strong>";
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{ ...tooltipItem(), body: rawBody }]));
+
+    expect(result.ok).toBe(true);
+    const renderedBody = findByAttribute(dom.body, "data-adopta-renderer", "tooltip-body");
+    expect(renderedBody?.textContent).toBe(rawBody);
+    expect(renderedBody?.children).toHaveLength(0);
+    expect(dom.innerMarkupWriteCount).toBe(0);
+  });
+
+  it("does not read form values, field values, or host DOM text", () => {
+    const dom = new FakeDocument();
+    const sensitiveAnchor = dom.createHostElement("input", "billing.submit", true);
+    dom.body.appendChild(sensitiveAnchor);
+
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([tooltipItem()]));
+
+    expect(result.ok).toBe(true);
+    expect(sensitiveAnchor.sensitiveReadCount).toBe(0);
+  });
+
+  it("dismisses rendered nodes on Escape and removes listener", () => {
+    const dom = new FakeDocument();
+    dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([tooltipItem()]));
+
+    expect(result.ok).toBe(true);
+    expect(findRendererNodes(dom.body)).not.toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(1);
+
+    dom.dispatch("keydown", { key: "Escape" });
+
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+
+  it("unmount removes all created nodes and event listeners", () => {
+    const dom = new FakeDocument();
+    dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([tooltipItem(), calloutItem()]));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(findRendererNodes(dom.body).length).toBeGreaterThan(0);
+    expect(dom.listenerCount("keydown")).toBe(2);
+
+    result.mount.unmount();
+
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+
+  it("cleans up partial SDK nodes when rendering fails midway", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([calloutItem(), tooltipItem()]));
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "missing_anchor"
+    });
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+});
+
+function bundle(items: readonly ContentItem[]): ContentBundle {
+  return {
+    bundleId: "bundle-1",
+    tenantId: "tenant-1",
+    applicationId: "application-1",
+    environment: "production",
+    channel: "published",
+    version: "1.0.0",
+    generatedAtUtc: "2026-06-29T12:00:00Z",
+    items
+  };
+}
+
+function tooltipItem(): ContentItem {
+  return {
+    id: "tooltip-1",
+    type: "tooltip",
+    version: "1.0.0",
+    title: "Submit return",
+    body: "Use this action when the return is ready.",
+    anchor: {
+      strategy: "data-adopt-id",
+      value: "billing.submit"
+    }
+  };
+}
+
+function calloutItem(): ContentItem {
+  return {
+    id: "callout-1",
+    type: "callout",
+    version: "1.0.0",
+    title: "Announcement",
+    body: "Guidance is available."
+  };
+}
+
+function checklistItem(): ContentItem {
+  return {
+    id: "checklist-1",
+    type: "checklist",
+    version: "1.0.0",
+    title: "Checklist placeholder"
+  };
+}
+
+function walkthroughItem(): ContentItem {
+  return {
+    id: "walkthrough-1",
+    type: "walkthrough",
+    version: "1.0.0",
+    title: "Walkthrough placeholder"
+  };
+}
+
+function findRendererNodes(root: FakeElement): FakeElement[] {
+  return root
+    .querySelectorAll("[data-adopta-renderer]")
+    .map((element) => element as FakeElement);
+}
+
+function findByAttribute(
+  root: FakeElement,
+  name: string,
+  value: string
+): FakeElement | undefined {
+  return root
+    .querySelectorAll(`[${name}]`)
+    .find((element) => (element as FakeElement).getAttribute(name) === value) as FakeElement | undefined;
+}
+
+class FakeDocument {
+  public readonly documentElement = new FakeElement("html", this);
+  public readonly body = new FakeElement("body", this);
+  public innerMarkupWriteCount = 0;
+  private readonly listeners = new Map<string, Set<EventListener>>();
+
+  public constructor() {
+    this.documentElement.appendChild(this.body);
+  }
+
+  public createElement(tagName: string): HTMLElement {
+    return new FakeElement(tagName, this) as unknown as HTMLElement;
+  }
+
+  public createHostElement(
+    tagName: string,
+    dataAdoptId: string,
+    sensitive = false
+  ): FakeElement {
+    const element = new FakeElement(tagName, this, sensitive);
+    element.setAttribute("data-adopt-id", dataAdoptId);
+
+    return element;
+  }
+
+  public addEventListener(type: string, listener: EventListener): void {
+    const listeners = this.listeners.get(type) ?? new Set<EventListener>();
+    listeners.add(listener);
+    this.listeners.set(type, listeners);
+  }
+
+  public removeEventListener(type: string, listener: EventListener): void {
+    this.listeners.get(type)?.delete(listener);
+  }
+
+  public dispatch(type: string, event: Partial<KeyboardEvent>): void {
+    for (const listener of this.listeners.get(type) ?? []) {
+      listener(event as Event);
+    }
+  }
+
+  public listenerCount(type: string): number {
+    return this.listeners.get(type)?.size ?? 0;
+  }
+
+  public asDocument(): Document {
+    return this as unknown as Document;
+  }
+}
+
+class FakeElement {
+  public readonly children: FakeElement[] = [];
+  public parentNode: FakeElement | null = null;
+  public sensitiveReadCount = 0;
+  private readonly attributes = new Map<string, string>();
+  private readonly listeners = new Map<string, Set<EventListener>>();
+  private text = "";
+
+  public constructor(
+    public readonly tagName: string,
+    private readonly owner: FakeDocument,
+    private readonly sensitive = false
+  ) {}
+
+  public get parentElement(): FakeElement | null {
+    return this.parentNode;
+  }
+
+  public get textContent(): string {
+    if (this.sensitive) {
+      this.sensitiveReadCount += 1;
+      throw new Error("sensitive text read");
+    }
+
+    return this.text;
+  }
+
+  public set textContent(value: string | null) {
+    this.text = value ?? "";
+  }
+
+  public get value(): string {
+    if (this.sensitive) {
+      this.sensitiveReadCount += 1;
+      throw new Error("sensitive value read");
+    }
+
+    return "";
+  }
+
+  public set innerHTML(_: string) {
+    this.owner.innerMarkupWriteCount += 1;
+    throw new Error("raw markup write");
+  }
+
+  public setAttribute(name: string, value: string): void {
+    this.attributes.set(name, value);
+  }
+
+  public getAttribute(name: string): string | null {
+    return this.attributes.get(name) ?? null;
+  }
+
+  public appendChild<T extends Node>(node: T): T {
+    const child = node as unknown as FakeElement;
+    child.parentNode = this;
+    this.children.push(child);
+
+    return node;
+  }
+
+  public removeChild<T extends Node>(node: T): T {
+    const child = node as unknown as FakeElement;
+    const index = this.children.indexOf(child);
+    if (index >= 0) {
+      this.children.splice(index, 1);
+      child.parentNode = null;
+    }
+
+    return node;
+  }
+
+  public addEventListener(type: string, listener: EventListener): void {
+    const listeners = this.listeners.get(type) ?? new Set<EventListener>();
+    listeners.add(listener);
+    this.listeners.set(type, listeners);
+  }
+
+  public removeEventListener(type: string, listener: EventListener): void {
+    this.listeners.get(type)?.delete(listener);
+  }
+
+  public querySelectorAll(selector: string): Element[] {
+    const attribute = /^\[([^\]]+)\]$/.exec(selector)?.[1];
+    if (attribute === undefined) {
+      return [];
+    }
+
+    return this.collectByAttribute(attribute).map((element) => element as unknown as Element);
+  }
+
+  public asParentNode(): ParentNode {
+    return this as unknown as ParentNode;
+  }
+
+  private collectByAttribute(attribute: string): FakeElement[] {
+    const current = this.attributes.has(attribute) ? [this] : [];
+    return [
+      ...current,
+      ...this.children.flatMap((child) => child.collectByAttribute(attribute))
+    ];
+  }
+}

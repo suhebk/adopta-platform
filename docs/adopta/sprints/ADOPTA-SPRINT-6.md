@@ -242,3 +242,88 @@ rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlS
 ### Next recommended slice
 
 Add runtime renderer foundation for safe, accessible, non-invasive display of retrieved bundle content, while keeping analytics, external delivery storage, CDN, Blob Storage, browser extension, Property MTD integration, and production deployment automation out of scope until explicitly approved.
+
+## Slice 4 - Runtime renderer foundation
+
+### Requirement IDs covered
+
+- `FR-AUT-016` - Added a framework-agnostic runtime renderer foundation for existing runtime content bundle contracts.
+- `FR-IDN-031` - Preserved first-party `data-adopt-id` anchoring through the existing `AnchorResolver`.
+- `NFR-SEC-1` - Kept rendering privacy-safe by avoiding field/form values, raw DOM text, tokens, headers, claims, secrets, connection strings, tax/HMRC/property data, and sensitive values.
+- `NFR-A11Y-1` - Added accessible tooltip and announcement semantics, dismiss controls, Escape dismissal, focus-safe behavior, and no animation.
+- `NFR-TEST-1` - Added TypeScript tests for rendering, safe anchor failures, unsupported placeholders, invalid bundles, teardown, Escape/dismiss behavior, and sensitive host-data avoidance.
+
+### Scope delivered
+
+- Added `Renderer` to `@adopta/runtime-sdk`.
+- Added renderer options, result, item result, mount, and failure contracts.
+- Added SDK-owned container lifecycle for safe mount/unmount.
+- Added tooltip rendering for `tooltip` content anchored by `data-adopt-id`.
+- Added banner/announcement rendering for `callout` content.
+- Kept `checklist` and `walkthrough` as unsupported placeholder-safe results.
+- Used only the existing `AnchorResolver` and `data-adopt-id` strategy.
+- Added cleanup on rendering failure before returning a safe failure result.
+
+### DOM safety boundaries
+
+The renderer creates only SDK-owned nodes and removes only those nodes on unmount. It does not rewrite existing host elements, does not use raw markup injection, does not use brittle selector strategies, XPath, text matching, coordinate matching, AI fallback, or vision fallback.
+
+The renderer does not read host DOM text, input values, form values, field values, tokens, headers, claims, secrets, connection strings, tax data, HMRC data, property data, or user-entered values.
+
+### Accessibility behavior
+
+Tooltip surfaces use tooltip semantics and accessible labels. Callout surfaces use announcement/status semantics. Rendered guidance includes a dismiss control with an accessible label, supports Escape dismissal, does not autofocus, does not add focus traps, and uses no animation in this foundation slice.
+
+### Assumptions
+
+The renderer is intentionally framework-agnostic and content-contract-first. It renders only currently supported safe surfaces and does not evaluate targeting, send events, call analytics, or perform external delivery operations.
+
+### Explicitly not built
+
+- Analytics pipeline.
+- Event transport.
+- Event Hubs.
+- ClickHouse.
+- AI assistant.
+- Browser extension.
+- Property MTD integration.
+- Studio UI.
+- CDN publishing.
+- Blob Storage publishing.
+- Delivery external storage.
+- Production Azure deployment automation.
+- EF migrations.
+- Migration execution.
+- Database creation.
+- Automatic startup migration.
+- Live database health checks.
+- Real SQL Server connectivity checks.
+- Appsettings changes.
+- Deployment files.
+- Database schema changes.
+
+### Commands to run
+
+```powershell
+pnpm typecheck
+pnpm build
+pnpm test
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+rg "innerHTML|XPath|screen-coordinate|text matching|querySelector\\(|\\.value|FormData|localStorage|sessionStorage|Authorization|Bearer|Password|ConnectionString|HMRC|tax|property|secret|token|claim" packages/runtime-sdk/src/rendering
+```
+
+### Known limitations
+
+- Only tooltip and callout/banner surfaces render in this slice.
+- Checklist and walkthrough remain unsupported placeholder-safe results.
+- No analytics, event transport, targeting evaluation, external delivery storage, browser extension, Property MTD integration, Studio UI, CDN, or Blob Storage integration exists.
+- The runtime demo remains local/static and was not changed in this slice.
+
+### Next recommended slice
+
+Add a controlled local runtime demo wiring slice for rendering retrieved/local bundles in the demo host, or begin runtime renderer hardening for checklist/walkthrough models if their content contracts are expanded and approved.
