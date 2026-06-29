@@ -66,3 +66,56 @@ button:focus-visible {
 .diagnostics ul {
   margin-bottom: 0;
 }
+
+.diagnostics button {
+  margin-bottom: 0.75rem;
+}
+
+[data-adopta-renderer] {
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+[data-adopta-renderer="banner"] {
+  position: fixed;
+  inset: auto 1rem 1rem 1rem;
+  z-index: 10;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 34rem;
+  padding: 1rem;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #111827;
+  box-shadow: 0 18px 40px rgb(15 23 42 / 18%);
+}
+
+[data-adopta-renderer="tooltip"] {
+  display: inline-grid;
+  gap: 0.4rem;
+  max-width: 20rem;
+  margin-top: 0.5rem;
+  padding: 0.8rem;
+  border: 1px solid #15803d;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #111827;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 14%);
+}
+
+[data-adopta-renderer="banner-title"],
+[data-adopta-renderer="tooltip-title"] {
+  margin: 0;
+  font-weight: 700;
+}
+
+[data-adopta-renderer="banner-body"],
+[data-adopta-renderer="tooltip-body"] {
+  margin: 0;
+  line-height: 1.45;
+}
+
+[data-adopta-renderer] button {
+  width: fit-content;
+}

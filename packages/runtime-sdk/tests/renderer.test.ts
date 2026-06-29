@@ -148,6 +148,24 @@ describe("runtime renderer foundation", () => {
     expect(dom.listenerCount("keydown")).toBe(0);
   });
 
+  it("dismisses rendered nodes from the SDK-owned dismiss control", () => {
+    const dom = new FakeDocument();
+    dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([tooltipItem(), calloutItem()]));
+
+    expect(result.ok).toBe(true);
+    expect(findRendererNodes(dom.body).length).toBeGreaterThan(0);
+
+    const dismiss = findByAttribute(dom.body, "aria-label", "Dismiss guidance");
+    expect(dismiss).toBeDefined();
+
+    dismiss?.dispatch("click", {});
+
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+
   it("unmount removes all created nodes and event listeners", () => {
     const dom = new FakeDocument();
     dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
@@ -383,6 +401,12 @@ class FakeElement {
 
   public removeEventListener(type: string, listener: EventListener): void {
     this.listeners.get(type)?.delete(listener);
+  }
+
+  public dispatch(type: string, event: Partial<Event>): void {
+    for (const listener of this.listeners.get(type) ?? []) {
+      listener(event as Event);
+    }
   }
 
   public querySelectorAll(selector: string): Element[] {
