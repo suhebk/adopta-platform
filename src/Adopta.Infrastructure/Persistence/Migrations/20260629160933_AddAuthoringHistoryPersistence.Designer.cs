@@ -4,6 +4,7 @@ using Adopta.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Adopta.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AdoptaDbContext))]
-    partial class AdoptaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260629160933_AddAuthoringHistoryPersistence")]
+    partial class AddAuthoringHistoryPersistence
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

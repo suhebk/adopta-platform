@@ -86,3 +86,26 @@ The schema baseline source may be reviewed in this slice. The following remain s
 ## Explicit Non-Approval
 
 Migration execution is not approved in this slice. The generated migration files are source artifacts for review only and must not be applied to any real database until a future approved slice authorizes execution.
+
+## Slice 2 History Persistence Review
+
+The `AddAuthoringHistoryPersistence` migration source adds review-only tables for durable history:
+
+- `AuthoredContentLifecycleHistory`
+- `AuthoredContentPublishingHistory`
+
+Both tables are tenant-owned and include non-null `TenantId` columns. They store structural metadata only:
+
+- content ID;
+- version ID where applicable;
+- actor user ID;
+- lifecycle or publishing action metadata;
+- environment/channel metadata for publishing;
+- result;
+- UTC occurrence timestamp.
+
+They must not store content body, tokens, headers, raw claims, form values, input values, tax data, HMRC data, property data, secrets, credentials, or sensitive values.
+
+The migration source includes tenant-scoped indexes for occurrence time and content/version lookup. Publishing history also includes a tenant/environment/channel index.
+
+Migration execution remains not approved. The history migration is a source review artifact only and must not be applied to a real database until a future approved slice authorizes execution.

@@ -35,6 +35,12 @@ public sealed class AdoptaDbContext : DbContext
 
     public DbSet<AuthoredContentItem> AuthoredContentItems => Set<AuthoredContentItem>();
 
+    public DbSet<AuthoredContentLifecycleHistoryRecord> AuthoredContentLifecycleHistory =>
+        Set<AuthoredContentLifecycleHistoryRecord>();
+
+    public DbSet<AuthoredContentPublishingHistoryRecord> AuthoredContentPublishingHistory =>
+        Set<AuthoredContentPublishingHistoryRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("adopta");
