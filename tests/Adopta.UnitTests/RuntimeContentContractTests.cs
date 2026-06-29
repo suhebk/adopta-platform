@@ -84,6 +84,114 @@ public sealed class RuntimeContentContractTests
         Assert.Contains(RuntimeContentValidator.ValidateItem(invalid), issue => issue.Code == "invalid_targeting_placeholder");
     }
 
+    [Fact]
+    public void Runtime_content_item_accepts_valid_checklist_contract()
+    {
+        var item = BuildItem(
+            type: RuntimeContentType.Checklist,
+            checklist: new RuntimeChecklistContent(
+            [
+                new RuntimeChecklistStep(
+                    "step-1",
+                    "Confirm details",
+                    "Complete this step when ready.",
+                    new RuntimeAnchorDescriptor("data-adopt-id", "billing.confirm"),
+                    BuildExperience()),
+                new RuntimeChecklistStep("step-2", "Submit return")
+            ]));
+
+        var issues = RuntimeContentValidator.ValidateItem(item);
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void Runtime_content_item_rejects_invalid_checklist_contract()
+    {
+        var item = BuildItem(
+            type: RuntimeContentType.Checklist,
+            checklist: new RuntimeChecklistContent(
+            [
+                new RuntimeChecklistStep("step-1", ""),
+                new RuntimeChecklistStep("step-1", "Duplicate", Anchor: new RuntimeAnchorDescriptor("css", ".submit"))
+            ]));
+
+        var issues = RuntimeContentValidator.ValidateItem(item);
+
+        Assert.Contains(issues, issue => issue.Code == "invalid_checklist_content");
+        Assert.Contains(issues, issue => issue.Code == "duplicate_checklist_step_id");
+        Assert.Contains(issues, issue => issue.Code == "invalid_anchor_descriptor");
+    }
+
+    [Fact]
+    public void Runtime_content_item_accepts_valid_walkthrough_contract()
+    {
+        var item = BuildItem(
+            type: RuntimeContentType.Walkthrough,
+            walkthrough: new RuntimeWalkthroughContent(
+            [
+                new RuntimeWalkthroughStep("intro", "Start here", Experience: BuildExperience()),
+                new RuntimeWalkthroughStep(
+                    "submit",
+                    "Submit return",
+                    "Use this step when ready.",
+                    new RuntimeAnchorDescriptor("data-adopt-id", "billing.submit"))
+            ]));
+
+        var issues = RuntimeContentValidator.ValidateItem(item);
+
+        Assert.Empty(issues);
+    }
+
+    [Fact]
+    public void Runtime_content_item_rejects_invalid_walkthrough_contract()
+    {
+        var item = BuildItem(
+            type: RuntimeContentType.Walkthrough,
+            walkthrough: new RuntimeWalkthroughContent(
+            [
+                new RuntimeWalkthroughStep("", ""),
+                new RuntimeWalkthroughStep("intro", "Intro"),
+                new RuntimeWalkthroughStep("intro", "Duplicate intro")
+            ]));
+
+        var issues = RuntimeContentValidator.ValidateItem(item);
+
+        Assert.Contains(issues, issue => issue.Code == "invalid_walkthrough_content");
+        Assert.Contains(issues, issue => issue.Code == "duplicate_walkthrough_step_id");
+    }
+
+    [Fact]
+    public void Runtime_content_item_validates_experience_metadata_values()
+    {
+        var item = BuildItem(experience: new RuntimeExperienceMetadata(
+            new RuntimeRendererPlacement("coordinate-100", ["bottom"]),
+            ["dismiss-button", "dismiss-button"],
+            new RuntimeRendererTheme("raw-css-red", "comfortable", "standard")));
+
+        var issues = RuntimeContentValidator.ValidateItem(item);
+
+        Assert.Contains(issues, issue => issue.Code == "invalid_renderer_placement");
+        Assert.Contains(issues, issue => issue.Code == "invalid_dismiss_behavior");
+        Assert.Contains(issues, issue => issue.Code == "invalid_renderer_theme");
+    }
+
+    [Fact]
+    public void Runtime_content_validation_messages_do_not_echo_sensitive_markers()
+    {
+        var marker = string.Concat("Bear", "er");
+        var sensitiveValue = $"{marker} runtime-marker";
+        var item = BuildItem(experience: new RuntimeExperienceMetadata(
+            Theme: new RuntimeRendererTheme(sensitiveValue)));
+
+        var issues = RuntimeContentValidator.ValidateItem(item);
+        var messages = string.Join(' ', issues.Select(issue => issue.Message));
+
+        Assert.NotEmpty(issues);
+        Assert.DoesNotContain(marker, messages, StringComparison.Ordinal);
+        Assert.DoesNotContain("runtime-marker", messages, StringComparison.Ordinal);
+    }
+
     private static RuntimeContentBundle BuildBundle(
         string bundleId = "bundle-1",
         string tenantId = "tenant-1",
@@ -110,7 +218,10 @@ public sealed class RuntimeContentContractTests
         string version = "1.0.0",
         string title = "Submit return",
         RuntimeAnchorDescriptor? anchor = null,
-        RuntimeTargetingPlaceholder? targeting = null)
+        RuntimeTargetingPlaceholder? targeting = null,
+        RuntimeExperienceMetadata? experience = null,
+        RuntimeChecklistContent? checklist = null,
+        RuntimeWalkthroughContent? walkthrough = null)
     {
         return new RuntimeContentItem(
             id,
@@ -119,6 +230,17 @@ public sealed class RuntimeContentContractTests
             title,
             "Use this action when the return is ready.",
             anchor ?? new RuntimeAnchorDescriptor("data-adopt-id", "billing.submit"),
-            targeting ?? new RuntimeTargetingPlaceholder("placeholder", [], []));
+            targeting ?? new RuntimeTargetingPlaceholder("placeholder", [], []),
+            experience,
+            checklist,
+            walkthrough);
+    }
+
+    private static RuntimeExperienceMetadata BuildExperience()
+    {
+        return new RuntimeExperienceMetadata(
+            new RuntimeRendererPlacement("right", ["bottom", "inline"]),
+            ["dismiss-button", "escape-key"],
+            new RuntimeRendererTheme("info", "comfortable", "standard"));
     }
 }

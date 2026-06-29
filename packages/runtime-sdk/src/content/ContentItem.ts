@@ -1,5 +1,8 @@
 import type { AnchorDescriptor } from "../anchors/AnchorDescriptor";
+import type { ChecklistContent } from "./ChecklistContent";
+import type { RuntimeExperienceMetadata } from "./RuntimeExperienceContent";
 import type { TargetingPlaceholder } from "./TargetingPlaceholder";
+import type { WalkthroughContent } from "./WalkthroughContent";
 
 export interface ContentItemBase {
   readonly id: string;
@@ -8,6 +11,7 @@ export interface ContentItemBase {
   readonly body?: string;
   readonly anchor?: AnchorDescriptor;
   readonly targeting?: TargetingPlaceholder;
+  readonly experience?: RuntimeExperienceMetadata;
 }
 
 export interface TooltipContentItem extends ContentItemBase {
@@ -20,10 +24,12 @@ export interface CalloutContentItem extends ContentItemBase {
 
 export interface ChecklistContentItem extends ContentItemBase {
   readonly type: "checklist";
+  readonly checklist?: ChecklistContent;
 }
 
 export interface WalkthroughContentItem extends ContentItemBase {
   readonly type: "walkthrough";
+  readonly walkthrough?: WalkthroughContent;
 }
 
 export type ContentItem =

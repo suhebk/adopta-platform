@@ -1,6 +1,13 @@
 import { isContentType } from "./ContentType";
 import type { ContentBundle } from "./ContentBundle";
 import type { ContentItem } from "./ContentItem";
+import { isRendererPlacementToken } from "./RendererPlacement";
+import { isDismissBehaviorToken } from "./RuntimeExperienceContent";
+import {
+  isRendererThemeDensity,
+  isRendererThemeEmphasis,
+  isRendererThemeTone
+} from "./RendererTheme";
 
 export type ContentValidationIssueCode =
   | "invalid_content_item"
@@ -8,6 +15,14 @@ export type ContentValidationIssueCode =
   | "invalid_content_bundle"
   | "invalid_anchor_descriptor"
   | "invalid_targeting_placeholder"
+  | "invalid_runtime_experience_metadata"
+  | "invalid_checklist_content"
+  | "duplicate_checklist_step_id"
+  | "invalid_walkthrough_content"
+  | "duplicate_walkthrough_step_id"
+  | "invalid_renderer_placement"
+  | "invalid_dismiss_behavior"
+  | "invalid_renderer_theme"
   | "duplicate_content_item_id";
 
 export interface ContentValidationIssue {
@@ -46,6 +61,18 @@ export function validateContentItem(item: unknown, path = "item"): ContentValida
 
   if (item.targeting !== undefined && !isValidTargetingPlaceholder(item.targeting)) {
     issues.push(issue("invalid_targeting_placeholder", `${path}.targeting`, "Targeting placeholder is invalid."));
+  }
+
+  if (item.experience !== undefined) {
+    issues.push(...validateRuntimeExperienceMetadata(item.experience, `${path}.experience`));
+  }
+
+  if (item.type === "checklist" && item.checklist !== undefined) {
+    issues.push(...validateChecklistContent(item.checklist, `${path}.checklist`));
+  }
+
+  if (item.type === "walkthrough" && item.walkthrough !== undefined) {
+    issues.push(...validateWalkthroughContent(item.walkthrough, `${path}.walkthrough`));
   }
 
   return {
@@ -111,6 +138,173 @@ function isValidTargetingPlaceholder(value: unknown): boolean {
   }
 
   return isOptionalStringArray(value.segments) && isOptionalStringArray(value.pageKeys);
+}
+
+function validateChecklistContent(value: unknown, path: string): ContentValidationIssue[] {
+  const issues: ContentValidationIssue[] = [];
+
+  if (!isRecord(value) || !Array.isArray(value.steps)) {
+    return [issue("invalid_checklist_content", path, "Checklist content is invalid.")];
+  }
+
+  validateSteps(
+    value.steps,
+    path,
+    "invalid_checklist_content",
+    "duplicate_checklist_step_id",
+    issues
+  );
+
+  return issues;
+}
+
+function validateWalkthroughContent(value: unknown, path: string): ContentValidationIssue[] {
+  const issues: ContentValidationIssue[] = [];
+
+  if (!isRecord(value) || !Array.isArray(value.steps)) {
+    return [issue("invalid_walkthrough_content", path, "Walkthrough content is invalid.")];
+  }
+
+  validateSteps(
+    value.steps,
+    path,
+    "invalid_walkthrough_content",
+    "duplicate_walkthrough_step_id",
+    issues
+  );
+
+  return issues;
+}
+
+function validateSteps(
+  steps: readonly unknown[],
+  path: string,
+  invalidCode: Extract<ContentValidationIssueCode, "invalid_checklist_content" | "invalid_walkthrough_content">,
+  duplicateCode: Extract<ContentValidationIssueCode, "duplicate_checklist_step_id" | "duplicate_walkthrough_step_id">,
+  issues: ContentValidationIssue[]
+): void {
+  if (steps.length === 0) {
+    issues.push(issue(invalidCode, `${path}.steps`, "Content steps are required."));
+    return;
+  }
+
+  const seenIds = new Set<string>();
+  steps.forEach((step, index) => {
+    const stepPath = `${path}.steps[${index}]`;
+    if (!isRecord(step)) {
+      issues.push(issue(invalidCode, stepPath, "Content step is invalid."));
+      return;
+    }
+
+    requireNonBlankString(step.id, `${stepPath}.id`, invalidCode, issues);
+    requireNonBlankString(step.title, `${stepPath}.title`, invalidCode, issues);
+
+    if (step.body !== undefined && typeof step.body !== "string") {
+      issues.push(issue(invalidCode, `${stepPath}.body`, "Content step body must be a string when present."));
+    }
+
+    if (step.anchor !== undefined && !isValidAnchorDescriptor(step.anchor)) {
+      issues.push(issue("invalid_anchor_descriptor", `${stepPath}.anchor`, "Anchor descriptor is invalid."));
+    }
+
+    if (step.experience !== undefined) {
+      issues.push(...validateRuntimeExperienceMetadata(step.experience, `${stepPath}.experience`));
+    }
+
+    if (typeof step.id === "string" && step.id.trim().length > 0) {
+      const normalizedId = step.id.trim();
+      if (seenIds.has(normalizedId)) {
+        issues.push(issue(duplicateCode, `${stepPath}.id`, "Content step id is duplicated."));
+      }
+
+      seenIds.add(normalizedId);
+    }
+  });
+}
+
+function validateRuntimeExperienceMetadata(
+  value: unknown,
+  path: string
+): ContentValidationIssue[] {
+  const issues: ContentValidationIssue[] = [];
+
+  if (!isRecord(value)) {
+    return [
+      issue(
+        "invalid_runtime_experience_metadata",
+        path,
+        "Runtime experience metadata is invalid."
+      )
+    ];
+  }
+
+  if (value.placement !== undefined) {
+    issues.push(...validateRendererPlacement(value.placement, `${path}.placement`));
+  }
+
+  if (value.dismissBehavior !== undefined) {
+    issues.push(...validateDismissBehavior(value.dismissBehavior, `${path}.dismissBehavior`));
+  }
+
+  if (value.theme !== undefined) {
+    issues.push(...validateRendererTheme(value.theme, `${path}.theme`));
+  }
+
+  return issues;
+}
+
+function validateRendererPlacement(value: unknown, path: string): ContentValidationIssue[] {
+  if (!isRecord(value) || !isRendererPlacementToken(value.preferred)) {
+    return [issue("invalid_renderer_placement", path, "Renderer placement is invalid.")];
+  }
+
+  if (
+    value.fallback !== undefined &&
+    (!Array.isArray(value.fallback) || !value.fallback.every(isRendererPlacementToken))
+  ) {
+    return [issue("invalid_renderer_placement", `${path}.fallback`, "Renderer placement fallback is invalid.")];
+  }
+
+  return [];
+}
+
+function validateDismissBehavior(value: unknown, path: string): ContentValidationIssue[] {
+  if (!Array.isArray(value) || value.length === 0 || !value.every(isDismissBehaviorToken)) {
+    return [issue("invalid_dismiss_behavior", path, "Dismiss behavior is invalid.")];
+  }
+
+  const seen = new Set<string>();
+  for (const behavior of value) {
+    if (seen.has(behavior)) {
+      return [issue("invalid_dismiss_behavior", path, "Dismiss behavior is invalid.")];
+    }
+
+    seen.add(behavior);
+  }
+
+  return [];
+}
+
+function validateRendererTheme(value: unknown, path: string): ContentValidationIssue[] {
+  if (!isRecord(value)) {
+    return [issue("invalid_renderer_theme", path, "Renderer theme is invalid.")];
+  }
+
+  const issues: ContentValidationIssue[] = [];
+
+  if (value.tone !== undefined && !isRendererThemeTone(value.tone)) {
+    issues.push(issue("invalid_renderer_theme", `${path}.tone`, "Renderer theme is invalid."));
+  }
+
+  if (value.density !== undefined && !isRendererThemeDensity(value.density)) {
+    issues.push(issue("invalid_renderer_theme", `${path}.density`, "Renderer theme is invalid."));
+  }
+
+  if (value.emphasis !== undefined && !isRendererThemeEmphasis(value.emphasis)) {
+    issues.push(issue("invalid_renderer_theme", `${path}.emphasis`, "Renderer theme is invalid."));
+  }
+
+  return issues;
 }
 
 function isOptionalStringArray(value: unknown): boolean {
