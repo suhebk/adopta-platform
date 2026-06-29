@@ -1,0 +1,207 @@
+import { AnchorResolver } from "../anchors/AnchorResolver";
+import type { AnchorResolutionFailure } from "../anchors/AnchorResolution";
+import type { ContentBundle } from "../content/ContentBundle";
+import type {
+  CalloutContentItem,
+  ContentItem,
+  TooltipContentItem
+} from "../content/ContentItem";
+import { validateContentBundle } from "../content/ContentValidation";
+import { createNoopRuntimeLogger } from "../runtime/RuntimeLogger";
+import { BannerRenderer } from "./BannerRenderer";
+import { RendererContainer } from "./RendererContainer";
+import type { RendererOptions } from "./RendererOptions";
+import {
+  createRendererFailure,
+  type RendererFailure,
+  type RendererFailureCode,
+  type RendererItemFailure,
+  type RendererItemResult,
+  type RendererResult
+} from "./RendererResult";
+import { TooltipRenderer } from "./TooltipRenderer";
+
+export class Renderer {
+  private readonly anchorResolver: AnchorResolver;
+  private readonly tooltipRenderer: TooltipRenderer;
+  private readonly bannerRenderer: BannerRenderer;
+
+  public constructor(private readonly options: RendererOptions = {}) {
+    this.anchorResolver = options.anchorResolver ?? new AnchorResolver();
+    this.tooltipRenderer = new TooltipRenderer();
+    this.bannerRenderer = new BannerRenderer();
+  }
+
+  public render(bundle: ContentBundle): RendererResult {
+    const logger = this.options.logger ?? createNoopRuntimeLogger();
+    const validation = validateContentBundle(bundle);
+    if (!validation.ok) {
+      logger.warn("Adopta renderer rejected invalid bundle.", {
+        code: "invalid_bundle",
+        issueCount: validation.issues.length
+      });
+
+      return createRendererFailure(
+        "invalid_bundle",
+        "Renderer failed safely.",
+        [],
+        validation.issues
+      );
+    }
+
+    const domDocument = resolveDocument(this.options.document);
+    if (domDocument === undefined) {
+      return createRendererFailure("dom_unavailable", "Renderer failed safely.");
+    }
+
+    const container = new RendererContainer(domDocument);
+    const itemResults: RendererItemResult[] = [];
+
+    try {
+      for (const item of bundle.items) {
+        const itemResult = this.renderItem(item, container, domDocument);
+        itemResults.push(itemResult);
+
+        if (!itemResult.ok && itemResult.code !== "unsupported_content_type") {
+          container.unmount();
+          return createRendererFailure(
+            itemResult.code,
+            "Renderer failed safely.",
+            itemResults
+          );
+        }
+      }
+
+      const renderedItemCount = itemResults.filter((result) => result.ok).length;
+      const skippedItemCount = itemResults.filter((result) =>
+        !result.ok && result.code === "unsupported_content_type").length;
+
+      return {
+        ok: true,
+        mount: {
+          renderedItemCount,
+          skippedItemCount,
+          unmount: () => container.unmount()
+        },
+        itemResults
+      };
+    } catch {
+      container.unmount();
+
+      return createRendererFailure(
+        "render_error",
+        "Renderer failed safely.",
+        itemResults
+      );
+    }
+  }
+
+  private renderItem(
+    item: ContentItem,
+    container: RendererContainer,
+    domDocument: Document
+  ): RendererItemResult {
+    if (item.type === "tooltip") {
+      return this.renderTooltip(item, container, domDocument);
+    }
+
+    if (item.type === "callout") {
+      this.bannerRenderer.render(item as CalloutContentItem, container, domDocument);
+      return success(item);
+    }
+
+    return {
+      ok: false,
+      itemId: item.id,
+      contentType: item.type,
+      code: "unsupported_content_type",
+      message: "Content type is unsupported by the renderer foundation."
+    };
+  }
+
+  private renderTooltip(
+    item: TooltipContentItem,
+    container: RendererContainer,
+    domDocument: Document
+  ): RendererItemResult {
+    if (item.anchor === undefined) {
+      return failure(item, "missing_anchor", "Anchor was not found.");
+    }
+
+    const anchorOptions = this.options.root === undefined
+      ? {}
+      : {
+          root: this.options.root
+        };
+    const anchorResult = this.anchorResolver.resolve(item.anchor, anchorOptions);
+
+    if (!anchorResult.ok) {
+      return anchorFailure(item, anchorResult);
+    }
+
+    this.tooltipRenderer.render(item, anchorResult.element, container, domDocument);
+    return success(item);
+  }
+}
+
+function resolveDocument(domDocument: Document | null | undefined): Document | undefined {
+  if (domDocument === null) {
+    return undefined;
+  }
+
+  if (domDocument !== undefined) {
+    return domDocument;
+  }
+
+  return globalThis.document;
+}
+
+function success(item: ContentItem): RendererItemResult {
+  return {
+    ok: true,
+    itemId: item.id,
+    contentType: item.type
+  };
+}
+
+function anchorFailure(
+  item: ContentItem,
+  anchorResult: AnchorResolutionFailure
+): RendererItemFailure {
+  const code = mapAnchorFailure(anchorResult);
+
+  return {
+    ok: false,
+    itemId: item.id,
+    contentType: item.type,
+    code,
+    message: "Renderer failed safely.",
+    anchorCode: anchorResult.code
+  };
+}
+
+function failure(
+  item: ContentItem,
+  code: RendererFailureCode,
+  message: string
+): RendererItemFailure {
+  return {
+    ok: false,
+    itemId: item.id,
+    contentType: item.type,
+    code: code as Exclude<RendererFailureCode, "invalid_bundle" | "dom_unavailable">,
+    message
+  };
+}
+
+function mapAnchorFailure(anchorResult: AnchorResolutionFailure): RendererItemFailure["code"] {
+  if (anchorResult.code === "missing_anchor") {
+    return "missing_anchor";
+  }
+
+  if (anchorResult.code === "duplicate_anchor") {
+    return "duplicate_anchor";
+  }
+
+  return "anchor_resolution_failed";
+}

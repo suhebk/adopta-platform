@@ -112,3 +112,17 @@ export {
   type DeliveryTransportRequest,
   type DeliveryTransportResponse
 } from "./delivery/DeliveryTransport";
+export { Renderer } from "./rendering/Renderer";
+export type { RendererOptions } from "./rendering/RendererOptions";
+export {
+  createRendererFailure,
+  type RendererFailure,
+  type RendererFailureCode,
+  type RendererItemFailure,
+  type RendererItemResult,
+  type RendererItemSkipped,
+  type RendererItemSuccess,
+  type RendererMount,
+  type RendererResult,
+  type RendererSuccess
+} from "./rendering/RendererResult";
