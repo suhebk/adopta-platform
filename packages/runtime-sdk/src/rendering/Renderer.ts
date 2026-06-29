@@ -3,12 +3,14 @@ import type { AnchorResolutionFailure } from "../anchors/AnchorResolution";
 import type { ContentBundle } from "../content/ContentBundle";
 import type {
   CalloutContentItem,
+  ChecklistContentItem,
   ContentItem,
   TooltipContentItem
 } from "../content/ContentItem";
 import { validateContentBundle } from "../content/ContentValidation";
 import { createNoopRuntimeLogger } from "../runtime/RuntimeLogger";
 import { BannerRenderer } from "./BannerRenderer";
+import { ChecklistRenderer } from "./ChecklistRenderer";
 import { RendererContainer } from "./RendererContainer";
 import type { RendererOptions } from "./RendererOptions";
 import {
@@ -25,11 +27,13 @@ export class Renderer {
   private readonly anchorResolver: AnchorResolver;
   private readonly tooltipRenderer: TooltipRenderer;
   private readonly bannerRenderer: BannerRenderer;
+  private readonly checklistRenderer: ChecklistRenderer;
 
   public constructor(private readonly options: RendererOptions = {}) {
     this.anchorResolver = options.anchorResolver ?? new AnchorResolver();
     this.tooltipRenderer = new TooltipRenderer();
     this.bannerRenderer = new BannerRenderer();
+    this.checklistRenderer = new ChecklistRenderer();
   }
 
   public render(bundle: ContentBundle): RendererResult {
@@ -110,13 +114,17 @@ export class Renderer {
       return success(item);
     }
 
-    return {
-      ok: false,
-      itemId: item.id,
-      contentType: item.type,
-      code: "unsupported_content_type",
-      message: "Content type is unsupported by the renderer foundation."
-    };
+    if (item.type === "checklist") {
+      const checklistItem = item as ChecklistContentItem;
+      if (checklistItem.checklist === undefined || checklistItem.checklist.steps.length === 0) {
+        return unsupported(item);
+      }
+
+      this.checklistRenderer.render(checklistItem, container, domDocument);
+      return success(item);
+    }
+
+    return unsupported(item);
   }
 
   private renderTooltip(
@@ -161,6 +169,16 @@ function success(item: ContentItem): RendererItemResult {
     ok: true,
     itemId: item.id,
     contentType: item.type
+  };
+}
+
+function unsupported(item: ContentItem): RendererItemResult {
+  return {
+    ok: false,
+    itemId: item.id,
+    contentType: item.type,
+    code: "unsupported_content_type",
+    message: "Content type is unsupported by the renderer foundation."
   };
 }
 

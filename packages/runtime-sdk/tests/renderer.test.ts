@@ -41,6 +41,65 @@ describe("runtime renderer foundation", () => {
     expect(banner?.getAttribute("aria-label")).toBe("Announcement");
   });
 
+  it("renders checklist title, body, and ordered steps", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richChecklistItem()]));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.mount.renderedItemCount).toBe(1);
+      expect(result.mount.skippedItemCount).toBe(0);
+    }
+
+    const checklist = findByAttribute(dom.body, "data-adopta-renderer", "checklist");
+    expect(checklist).toBeDefined();
+    expect(checklist?.getAttribute("role")).toBe("region");
+    expect(checklist?.getAttribute("aria-label")).toBe("Onboarding checklist");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "checklist-title")?.textContent)
+      .toBe("Onboarding checklist");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "checklist-body")?.textContent)
+      .toBe("Complete these setup tasks.");
+
+    const steps = findAllByAttribute(dom.body, "data-adopta-renderer", "checklist-step");
+    expect(steps).toHaveLength(2);
+    expect(steps[0]?.getAttribute("role")).toBe("listitem");
+    expect(steps[0]?.getAttribute("data-adopta-checklist-state")).toBe("incomplete");
+    expect(steps[1]?.getAttribute("data-adopta-checklist-state")).toBe("incomplete");
+  });
+
+  it("renders checklist state as display-only without input controls", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richChecklistItem()]));
+
+    expect(result.ok).toBe(true);
+    const stateNodes = findAllByAttribute(dom.body, "data-adopta-renderer", "checklist-step-state");
+    expect(stateNodes.map((node) => node.textContent)).toEqual(["Incomplete", "Incomplete"]);
+    expect(findByTagName(dom.body, "input")).toHaveLength(0);
+    expect(findByTagName(dom.body, "form")).toHaveLength(0);
+  });
+
+  it("keeps placeholder-safe checklist content valid but skipped", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([checklistItem()]));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.mount.renderedItemCount).toBe(0);
+      expect(result.mount.skippedItemCount).toBe(1);
+      expect(result.itemResults).toEqual([
+        expect.objectContaining({
+          ok: false,
+          code: "unsupported_content_type",
+          contentType: "checklist"
+        })
+      ]);
+    }
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
   it("fails safely when a tooltip anchor is missing", () => {
     const dom = new FakeDocument();
     const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
@@ -68,21 +127,16 @@ describe("runtime renderer foundation", () => {
     expect(findRendererNodes(dom.body)).toHaveLength(0);
   });
 
-  it("skips unsupported checklist and walkthrough content safely", () => {
+  it("skips unsupported walkthrough content safely", () => {
     const dom = new FakeDocument();
     const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
-      .render(bundle([checklistItem(), walkthroughItem()]));
+      .render(bundle([walkthroughItem()]));
 
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.mount.renderedItemCount).toBe(0);
-      expect(result.mount.skippedItemCount).toBe(2);
+      expect(result.mount.skippedItemCount).toBe(1);
       expect(result.itemResults).toEqual([
-        expect.objectContaining({
-          ok: false,
-          code: "unsupported_content_type",
-          contentType: "checklist"
-        }),
         expect.objectContaining({
           ok: false,
           code: "unsupported_content_type",
@@ -120,6 +174,34 @@ describe("runtime renderer foundation", () => {
     expect(dom.innerMarkupWriteCount).toBe(0);
   });
 
+  it("renders checklist content as text instead of raw markup", () => {
+    const dom = new FakeDocument();
+    const rawBody = "<strong>Do not parse me</strong>";
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{
+        ...richChecklistItem(),
+        body: rawBody,
+        checklist: {
+          steps: [
+            {
+              id: "step-1",
+              title: "First task",
+              body: "<img src=x onerror=alert(1)>"
+            }
+          ]
+        }
+      }]));
+
+    expect(result.ok).toBe(true);
+    const renderedBody = findByAttribute(dom.body, "data-adopta-renderer", "checklist-body");
+    const renderedStepBody = findByAttribute(dom.body, "data-adopta-renderer", "checklist-step-body");
+    expect(renderedBody?.textContent).toBe(rawBody);
+    expect(renderedStepBody?.textContent).toBe("<img src=x onerror=alert(1)>");
+    expect(renderedBody?.children).toHaveLength(0);
+    expect(renderedStepBody?.children).toHaveLength(0);
+    expect(dom.innerMarkupWriteCount).toBe(0);
+  });
+
   it("does not read form values, field values, or host DOM text", () => {
     const dom = new FakeDocument();
     const sensitiveAnchor = dom.createHostElement("input", "billing.submit", true);
@@ -130,6 +212,18 @@ describe("runtime renderer foundation", () => {
 
     expect(result.ok).toBe(true);
     expect(sensitiveAnchor.sensitiveReadCount).toBe(0);
+  });
+
+  it("does not read form values, field values, or host DOM text while rendering checklist", () => {
+    const dom = new FakeDocument();
+    const sensitiveHostElement = dom.createHostElement("input", "billing.secret", true);
+    dom.body.appendChild(sensitiveHostElement);
+
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richChecklistItem()]));
+
+    expect(result.ok).toBe(true);
+    expect(sensitiveHostElement.sensitiveReadCount).toBe(0);
   });
 
   it("dismisses rendered nodes on Escape and removes listener", () => {
@@ -143,6 +237,38 @@ describe("runtime renderer foundation", () => {
     expect(dom.listenerCount("keydown")).toBe(1);
 
     dom.dispatch("keydown", { key: "Escape" });
+
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+
+  it("dismisses checklist nodes on Escape and removes listener", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richChecklistItem()]));
+
+    expect(result.ok).toBe(true);
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "checklist")).toBeDefined();
+    expect(dom.listenerCount("keydown")).toBe(1);
+
+    dom.dispatch("keydown", { key: "Escape" });
+
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+
+  it("dismisses checklist nodes from the SDK-owned dismiss control", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richChecklistItem()]));
+
+    expect(result.ok).toBe(true);
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "checklist")).toBeDefined();
+
+    const dismiss = findByAttribute(dom.body, "aria-label", "Dismiss checklist guidance");
+    expect(dismiss).toBeDefined();
+
+    dismiss?.dispatch("click", {});
 
     expect(findRendererNodes(dom.body)).toHaveLength(0);
     expect(dom.listenerCount("keydown")).toBe(0);
@@ -179,6 +305,25 @@ describe("runtime renderer foundation", () => {
 
     expect(findRendererNodes(dom.body).length).toBeGreaterThan(0);
     expect(dom.listenerCount("keydown")).toBe(2);
+
+    result.mount.unmount();
+
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+
+  it("unmount removes checklist nodes and listeners", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richChecklistItem()]));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(findRendererNodes(dom.body).length).toBeGreaterThan(0);
+    expect(dom.listenerCount("keydown")).toBe(1);
 
     result.mount.unmount();
 
@@ -246,6 +391,29 @@ function checklistItem(): ContentItem {
   };
 }
 
+function richChecklistItem(): ContentItem {
+  return {
+    id: "checklist-1",
+    type: "checklist",
+    version: "1.0.0",
+    title: "Onboarding checklist",
+    body: "Complete these setup tasks.",
+    checklist: {
+      steps: [
+        {
+          id: "profile",
+          title: "Complete your profile",
+          body: "Add the structural profile settings."
+        },
+        {
+          id: "invite",
+          title: "Invite a teammate"
+        }
+      ]
+    }
+  };
+}
+
 function walkthroughItem(): ContentItem {
   return {
     id: "walkthrough-1",
@@ -269,6 +437,21 @@ function findByAttribute(
   return root
     .querySelectorAll(`[${name}]`)
     .find((element) => (element as FakeElement).getAttribute(name) === value) as FakeElement | undefined;
+}
+
+function findAllByAttribute(
+  root: FakeElement,
+  name: string,
+  value: string
+): FakeElement[] {
+  return root
+    .querySelectorAll(`[${name}]`)
+    .filter((element) => (element as FakeElement).getAttribute(name) === value)
+    .map((element) => element as FakeElement);
+}
+
+function findByTagName(root: FakeElement, tagName: string): FakeElement[] {
+  return root.collectByTagName(tagName);
 }
 
 class FakeDocument {
@@ -427,6 +610,15 @@ class FakeElement {
     return [
       ...current,
       ...this.children.flatMap((child) => child.collectByAttribute(attribute))
+    ];
+  }
+
+  public collectByTagName(tagName: string): FakeElement[] {
+    const normalizedTagName = tagName.toLowerCase();
+    const current = this.tagName.toLowerCase() === normalizedTagName ? [this] : [];
+    return [
+      ...current,
+      ...this.children.flatMap((child) => child.collectByTagName(normalizedTagName))
     ];
   }
 }

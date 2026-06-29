@@ -95,3 +95,67 @@ rg "innerHTML|XPath|screen-coordinate|text matching|querySelector\(|\.value|Form
 ### Next recommended slice
 
 Add renderer support for checklist content using the new contracts, keeping walkthrough rendering, analytics, event transport, external storage, Property MTD integration, and production infrastructure out of scope until separately approved.
+
+## Slice 2 - Checklist renderer foundation
+
+### Requirement IDs covered
+
+- `FR-AUT-013` - Added runtime checklist rendering foundation for onboarding/task-list style guidance.
+- `FR-DEL-014` - Kept runtime output isolated to SDK-owned nodes with explicit teardown.
+- `FR-DEL-015` - Preserved safe renderer failure behaviour and host-app safety boundaries.
+- `NFR-A11Y-1` - Added accessible checklist region/list semantics and accessible dismiss behaviour.
+- `NFR-PRIV-1` - Avoided field values, form values, host DOM text, tokens, headers, claims, secrets, connection strings, tax/HMRC/property data, and user-entered sensitive values.
+- `NFR-TEST-1` - Added TypeScript renderer coverage for checklist rendering, teardown, raw-markup safety, unsupported walkthrough handling, and privacy guardrails.
+
+### Scope delivered
+
+- Added `ChecklistRenderer` as a runtime SDK renderer peer to tooltip and banner/callout renderers.
+- Rendered checklist title, optional body, ordered steps, and display-only incomplete state from the approved checklist contract.
+- Preserved placeholder-safe checklist items by keeping them valid and skipped until rich checklist steps are present.
+- Wired checklist support into the existing `Renderer`.
+- Preserved tooltip and callout/banner behaviour.
+- Kept walkthrough content unsupported/placeholder-safe.
+- Kept checklist state local and in-memory only.
+- Added TypeScript tests for checklist rendering, dismiss/unmount, Escape teardown, raw-markup handling, host DOM privacy, and existing renderer compatibility.
+
+### Renderer assumptions
+
+Checklist rendering is display-only in this slice. The current checklist contract does not contain durable completion state, so rendered rich checklist steps are shown as incomplete and no controls are provided to toggle progress.
+
+Placeholder checklist items without rich checklist steps remain valid but are skipped safely. This preserves existing placeholder compatibility while enabling rendering for the approved rich checklist contract.
+
+The checklist surface appends an SDK-owned node to the document body or document element, matching the existing banner/callout renderer append-target pattern. The renderer does not mutate host application nodes beyond appending/removing SDK-owned nodes.
+
+Walkthrough rendering remains out of scope and continues to be skipped safely as an unsupported content type.
+
+### Accessibility behaviour
+
+- Checklist container uses an accessible labelled region.
+- Checklist steps render inside an ordered list with list/listitem semantics.
+- Dismiss control has an accessible label.
+- Escape dismissal follows the existing renderer pattern.
+- No autofocus, focus trap, or animation is introduced.
+
+### Commands to run
+
+```powershell
+pnpm typecheck
+pnpm build
+pnpm test
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "innerHTML|XPath|screen-coordinate|text matching|querySelector\(|\.value|FormData|localStorage|sessionStorage|Authorization|Bearer|Password|ConnectionString|HMRC|tax|property|secret|token|claim" packages/runtime-sdk/src/rendering packages/runtime-sdk/tests/renderer.test.ts
+```
+
+### Known limitations
+
+- Checklist progress is display-only and not persisted.
+- Checklist items do not launch walkthroughs yet.
+- Walkthrough rendering remains unsupported.
+- No targeting evaluation, analytics, event transport, backend/API change, persistence change, external storage, CDN/Blob Storage publishing, Property MTD integration, migration execution, database creation, or deployment automation was added.
+
+### Next recommended slice
+
+Add walkthrough renderer foundation using the approved walkthrough contracts, keeping analytics, event transport, targeting evaluation, backend/API changes, persistence changes, external storage, Property MTD integration, and production infrastructure out of scope until separately approved.
