@@ -9,6 +9,7 @@ using Adopta.Infrastructure.Identity;
 using Adopta.Infrastructure.Persistence;
 using Adopta.Infrastructure.Runtime;
 using Adopta.Infrastructure.Tenancy;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -40,6 +41,8 @@ public static class DependencyInjection
             services.Configure<EntraTenantResolutionOptions>(_ => { });
         }
 
+        ConfigurePersistence(services, configuration);
+
         services.AddScoped<AdoptionTenantContext>();
         services.AddScoped<IAdoptionTenantContext>(serviceProvider =>
             serviceProvider.GetRequiredService<AdoptionTenantContext>());
@@ -69,5 +72,57 @@ public static class DependencyInjection
         services.AddScoped<IAuthoredContentRepository, InMemoryAuthoredContentRepository>();
 
         return services;
+    }
+
+    private static void ConfigurePersistence(IServiceCollection services, IConfiguration? configuration)
+    {
+        if (configuration is null)
+        {
+            services.Configure<AdoptaPersistenceOptions>(_ => { });
+            return;
+        }
+
+        var section = configuration.GetSection(AdoptaPersistenceOptions.SectionName);
+        services.Configure<AdoptaPersistenceOptions>(options =>
+        {
+            options.Enabled = bool.TryParse(section[nameof(AdoptaPersistenceOptions.Enabled)], out var enabled) && enabled;
+            options.Provider = section[nameof(AdoptaPersistenceOptions.Provider)];
+            options.SqlServer.ConnectionStringName =
+                section.GetSection(nameof(AdoptaPersistenceOptions.SqlServer))[
+                    nameof(SqlServerPersistenceOptions.ConnectionStringName)];
+        });
+
+        var options = new AdoptaPersistenceOptions
+        {
+            Enabled = bool.TryParse(section[nameof(AdoptaPersistenceOptions.Enabled)], out var enabled) && enabled,
+            Provider = section[nameof(AdoptaPersistenceOptions.Provider)]
+        };
+        options.SqlServer.ConnectionStringName =
+            section.GetSection(nameof(AdoptaPersistenceOptions.SqlServer))[
+                nameof(SqlServerPersistenceOptions.ConnectionStringName)];
+
+        if (!options.Enabled)
+        {
+            return;
+        }
+
+        if (!string.Equals(options.Provider, "SqlServer", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Persistence is enabled but SQL Server persistence is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.SqlServer.ConnectionStringName))
+        {
+            throw new InvalidOperationException("Persistence is enabled but SQL Server persistence is not configured.");
+        }
+
+        var connectionString = configuration.GetConnectionString(options.SqlServer.ConnectionStringName);
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("Persistence is enabled but SQL Server persistence is not configured.");
+        }
+
+        services.AddDbContext<AdoptaDbContext>(dbContextOptions =>
+            dbContextOptions.UseSqlServer(connectionString));
     }
 }
