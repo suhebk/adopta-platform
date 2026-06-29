@@ -2,16 +2,20 @@ using System.Net;
 using System.Net.Http.Json;
 using Adopta.Api.Authoring;
 using Adopta.Application.Abstractions.Authoring;
+using Adopta.Application.Abstractions.Persistence;
+using Adopta.Application.Authoring;
 using Adopta.Application.Identity;
 using Adopta.Domain.Authoring;
 using Adopta.Domain.Identity;
 using Adopta.Infrastructure.Authoring;
 using Adopta.Infrastructure.Identity;
+using Adopta.Infrastructure.Persistence;
 using Adopta.Infrastructure.Tenancy;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Adopta.IntegrationTests;
 
@@ -29,6 +33,23 @@ public sealed class AuthoringApiEndpointTests
     }
 
     [Fact]
+    public async Task Missing_tenant_context_is_denied_on_all_authoring_routes()
+    {
+        using var factory = BuildFactory();
+        using var client = factory.CreateClient();
+
+        foreach (var request in BuildAuthoringRouteRequests())
+        {
+            using (request)
+            {
+                var response = await client.SendAsync(request);
+
+                Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Missing_permission_is_denied()
     {
         var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.DiagnosticsRead);
@@ -39,6 +60,39 @@ public sealed class AuthoringApiEndpointTests
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Wrong_permission_is_denied_for_create_get_and_list()
+    {
+        var tenantId = Guid.NewGuid();
+        var readOnly = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringRead, tenantId);
+        var manageOnly = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringManage, tenantId);
+        var content = await SeedContentAsync(tenantId, ContentLifecycleState.Draft);
+
+        using var factory = BuildFactoryWithSeeds(readOnly, manageOnly);
+        using var client = factory.CreateClient();
+        using var createRequest = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            "/authoring/content",
+            readOnly,
+            BuildCreateRequest());
+        using var getRequest = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            $"/authoring/content/{content.Id}",
+            manageOnly);
+        using var listRequest = CreateAuthenticatedRequest(
+            HttpMethod.Get,
+            "/authoring/content",
+            manageOnly);
+
+        var createResponse = await client.SendAsync(createRequest);
+        var getResponse = await client.SendAsync(getRequest);
+        var listResponse = await client.SendAsync(listRequest);
+
+        Assert.Equal(HttpStatusCode.Forbidden, createResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, getResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, listResponse.StatusCode);
     }
 
     [Fact]
@@ -122,6 +176,35 @@ public sealed class AuthoringApiEndpointTests
     }
 
     [Fact]
+    public async Task Successful_request_review_creates_one_lifecycle_history_record()
+    {
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringReview);
+        var content = await SeedContentAsync(seed.InternalTenantId, ContentLifecycleState.Draft);
+        var version = Assert.Single(content.Versions);
+        var historyRepository = new TestLifecycleHistoryRepository();
+
+        using var factory = BuildFactoryWithSeed(seed, historyRepository);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/authoring/content/{content.Id}/versions/{version.Id}/request-review",
+            seed,
+            new RequestReviewRequest(null));
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var record = Assert.Single(historyRepository.Records);
+        Assert.Equal(seed.InternalTenantId, record.TenantId);
+        Assert.Equal(content.Id, record.ContentId);
+        Assert.Equal(version.Id, record.VersionId);
+        Assert.Equal("RequestReview", record.LifecycleAction);
+        Assert.Equal(ContentLifecycleState.Draft, record.FromState);
+        Assert.Equal(ContentLifecycleState.InReview, record.ToState);
+        Assert.Equal("Succeeded", record.Result);
+    }
+
+    [Fact]
     public async Task Approve_requires_approve_permission()
     {
         var allowed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringApprove);
@@ -152,6 +235,35 @@ public sealed class AuthoringApiEndpointTests
     }
 
     [Fact]
+    public async Task Successful_approve_creates_one_lifecycle_history_record()
+    {
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringApprove);
+        var content = await SeedContentAsync(seed.InternalTenantId, ContentLifecycleState.InReview);
+        var version = Assert.Single(content.Versions);
+        var historyRepository = new TestLifecycleHistoryRepository();
+
+        using var factory = BuildFactoryWithSeed(seed, historyRepository);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/authoring/content/{content.Id}/versions/{version.Id}/approve",
+            seed,
+            new ApprovalDecisionRequest(null));
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var record = Assert.Single(historyRepository.Records);
+        Assert.Equal(seed.InternalTenantId, record.TenantId);
+        Assert.Equal(content.Id, record.ContentId);
+        Assert.Equal(version.Id, record.VersionId);
+        Assert.Equal("Approve", record.LifecycleAction);
+        Assert.Equal(ContentLifecycleState.InReview, record.FromState);
+        Assert.Equal(ContentLifecycleState.Approved, record.ToState);
+        Assert.Equal("Succeeded", record.Result);
+    }
+
+    [Fact]
     public async Task Reject_requires_review_permission()
     {
         var allowed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringReview);
@@ -179,6 +291,35 @@ public sealed class AuthoringApiEndpointTests
 
         Assert.Equal(HttpStatusCode.Forbidden, deniedResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, allowedResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Successful_reject_creates_one_lifecycle_history_record()
+    {
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringReview);
+        var content = await SeedContentAsync(seed.InternalTenantId, ContentLifecycleState.InReview);
+        var version = Assert.Single(content.Versions);
+        var historyRepository = new TestLifecycleHistoryRepository();
+
+        using var factory = BuildFactoryWithSeed(seed, historyRepository);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/authoring/content/{content.Id}/versions/{version.Id}/reject",
+            seed,
+            new ApprovalDecisionRequest(null));
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var record = Assert.Single(historyRepository.Records);
+        Assert.Equal(seed.InternalTenantId, record.TenantId);
+        Assert.Equal(content.Id, record.ContentId);
+        Assert.Equal(version.Id, record.VersionId);
+        Assert.Equal("Reject", record.LifecycleAction);
+        Assert.Equal(ContentLifecycleState.InReview, record.FromState);
+        Assert.Equal(ContentLifecycleState.Draft, record.ToState);
+        Assert.Equal("Succeeded", record.Result);
     }
 
     [Fact]
@@ -224,12 +365,43 @@ public sealed class AuthoringApiEndpointTests
         Assert.DoesNotContain(seed.InternalTenantId.ToString(), string.Join(" ", body.Issues.Select(issue => issue.Message)), StringComparison.Ordinal);
     }
 
-    private static WebApplicationFactory<Program> BuildFactoryWithSeed(TestIdentitySeed seed)
+    [Fact]
+    public async Task Invalid_workflow_command_does_not_create_lifecycle_history()
     {
-        return BuildFactoryWithSeeds(seed);
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringApprove);
+        var content = await SeedContentAsync(seed.InternalTenantId, ContentLifecycleState.Draft);
+        var version = Assert.Single(content.Versions);
+        var historyRepository = new TestLifecycleHistoryRepository();
+
+        using var factory = BuildFactoryWithSeed(seed, historyRepository);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/authoring/content/{content.Id}/versions/{version.Id}/approve",
+            seed,
+            new ApprovalDecisionRequest(null));
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(historyRepository.Records);
+    }
+
+    private static WebApplicationFactory<Program> BuildFactoryWithSeed(
+        TestIdentitySeed seed,
+        IAuthoredContentLifecycleHistoryRepository? lifecycleHistoryRepository = null)
+    {
+        return BuildFactoryWithSeeds([seed], lifecycleHistoryRepository);
     }
 
     private static WebApplicationFactory<Program> BuildFactoryWithSeeds(params TestIdentitySeed[] seeds)
+    {
+        return BuildFactoryWithSeeds(seeds, null);
+    }
+
+    private static WebApplicationFactory<Program> BuildFactoryWithSeeds(
+        TestIdentitySeed[] seeds,
+        IAuthoredContentLifecycleHistoryRepository? lifecycleHistoryRepository)
     {
         var tenantStore = new InMemoryAdoptaTenantMappingStore();
         var userStore = new InMemoryAuthenticatedUserMappingStore();
@@ -243,12 +415,13 @@ public sealed class AuthoringApiEndpointTests
                 BuildUser(seed.InternalTenantId, seed.SubjectId, seed.PermissionKey));
         }
 
-        return BuildFactory(tenantStore, userStore);
+        return BuildFactory(tenantStore, userStore, lifecycleHistoryRepository);
     }
 
     private static WebApplicationFactory<Program> BuildFactory(
         InMemoryAdoptaTenantMappingStore? tenantStore = null,
-        InMemoryAuthenticatedUserMappingStore? userStore = null)
+        InMemoryAuthenticatedUserMappingStore? userStore = null,
+        IAuthoredContentLifecycleHistoryRepository? lifecycleHistoryRepository = null)
     {
         tenantStore ??= new InMemoryAdoptaTenantMappingStore();
         userStore ??= new InMemoryAuthenticatedUserMappingStore();
@@ -270,8 +443,41 @@ public sealed class AuthoringApiEndpointTests
                 {
                     services.AddSingleton(tenantStore);
                     services.AddSingleton(userStore);
+                    if (lifecycleHistoryRepository is not null)
+                    {
+                        services.RemoveAll<IAuthoredContentLifecycleHistoryRepository>();
+                        services.AddSingleton(lifecycleHistoryRepository);
+                    }
                 });
             });
+    }
+
+    private static IReadOnlyCollection<HttpRequestMessage> BuildAuthoringRouteRequests()
+    {
+        var contentId = Guid.NewGuid();
+        var versionId = Guid.NewGuid();
+
+        return
+        [
+            new HttpRequestMessage(HttpMethod.Post, "/authoring/content")
+            {
+                Content = JsonContent.Create(BuildCreateRequest())
+            },
+            new HttpRequestMessage(HttpMethod.Get, $"/authoring/content/{contentId}"),
+            new HttpRequestMessage(HttpMethod.Get, "/authoring/content"),
+            new HttpRequestMessage(HttpMethod.Post, $"/authoring/content/{contentId}/versions/{versionId}/request-review")
+            {
+                Content = JsonContent.Create(new RequestReviewRequest(null))
+            },
+            new HttpRequestMessage(HttpMethod.Post, $"/authoring/content/{contentId}/versions/{versionId}/approve")
+            {
+                Content = JsonContent.Create(new ApprovalDecisionRequest(null))
+            },
+            new HttpRequestMessage(HttpMethod.Post, $"/authoring/content/{contentId}/versions/{versionId}/reject")
+            {
+                Content = JsonContent.Create(new ApprovalDecisionRequest(null))
+            }
+        ];
     }
 
     private static HttpRequestMessage CreateAuthenticatedRequest(
@@ -364,6 +570,28 @@ public sealed class AuthoringApiEndpointTests
                 Guid.NewGuid().ToString(),
                 internalTenantId,
                 permissionKey);
+        }
+    }
+
+    private sealed class TestLifecycleHistoryRepository : IAuthoredContentLifecycleHistoryRepository
+    {
+        private readonly List<AuthoredContentLifecycleAuditRecord> _records = [];
+
+        public IReadOnlyCollection<AuthoredContentLifecycleAuditRecord> Records => _records;
+
+        public Task AddAsync(
+            AuthoredContentLifecycleAuditRecord auditRecord,
+            CancellationToken cancellationToken = default)
+        {
+            _records.Add(auditRecord);
+
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyCollection<AuthoredContentLifecycleAuditRecord>> ListAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyCollection<AuthoredContentLifecycleAuditRecord>>(_records.ToArray());
         }
     }
 }
