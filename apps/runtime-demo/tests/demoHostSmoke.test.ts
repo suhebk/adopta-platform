@@ -14,6 +14,7 @@ const expectedAnchors = [
   "demo.billing.review",
   "demo.checklist.open",
   "demo.walkthrough.start",
+  "demo.guidance.unmount",
   "demo.diagnostics.status"
 ] as const;
 

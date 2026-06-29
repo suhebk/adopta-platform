@@ -2,7 +2,7 @@
 
 ## Sprint intent
 
-Sprint 6 creates a safe, tenant-scoped runtime delivery boundary for retrieving runtime delivery bundle contracts. The sprint must not add runtime rendering, external publishing, CDN, Blob Storage, analytics, AI, browser extension, Property MTD integration, migration execution, database creation, production Azure deployment automation, or production database mutation.
+Sprint 6 creates a safe, tenant-scoped runtime delivery boundary for retrieving runtime delivery bundle contracts and rendering approved guidance through the framework-agnostic runtime SDK. The sprint must not add external publishing, CDN, Blob Storage, analytics, AI, browser extension, Property MTD integration, migration execution, database creation, production Azure deployment automation, or production database mutation.
 
 ## Slice 1 - Delivery API contract endpoint foundation
 
@@ -327,3 +327,89 @@ rg "innerHTML|XPath|screen-coordinate|text matching|querySelector\\(|\\.value|Fo
 ### Next recommended slice
 
 Add a controlled local runtime demo wiring slice for rendering retrieved/local bundles in the demo host, or begin runtime renderer hardening for checklist/walkthrough models if their content contracts are expanded and approved.
+
+## Slice 5 - Renderer hardening and demo-host end-to-end wiring
+
+### Requirement IDs covered
+
+- `FR-AUT-016` - Wired the local runtime demo host through the SDK delivery client and renderer using existing runtime content bundle contracts.
+- `FR-IDN-031` - Preserved first-party `data-adopt-id` anchoring for rendered tooltip guidance and did not add CSS selector, XPath, coordinate, text, AI, or vision fallback strategies.
+- `NFR-SEC-1` - Kept demo rendering privacy-safe by avoiding host DOM text, field/form values, tokens, headers, claims, secrets, connection strings, tax/HMRC/property data, and user-entered values.
+- `NFR-A11Y-1` - Demonstrated dismissible tooltip and banner surfaces with explicit unmount support.
+- `NFR-TEST-1` - Added demo-host end-to-end tests for mock delivery, rendering, explicit unmount, safe missing/duplicate anchor failures, and host-data capture avoidance.
+
+### Scope delivered
+
+- Updated the local runtime demo host to create a mock-only `DeliveryTransport`.
+- Loaded the local content fixture through `DeliveryClient`.
+- Passed the retrieved bundle into `Renderer`.
+- Rendered tooltip content against the existing `demo.billing.submit` `data-adopt-id` anchor.
+- Rendered callout content as the existing safe banner/announcement surface.
+- Kept checklist and walkthrough content unsupported and placeholder-safe.
+- Added an explicit local demo unmount control.
+- Added isolated styles for SDK-owned rendered nodes using `data-adopta-renderer` attributes.
+- Added demo end-to-end tests and a focused renderer dismiss-control hardening test.
+
+### Demo-host runtime flow
+
+The demo initializes the runtime in no-op mode, constructs a `DeliveryClient` with a local mock transport, requests the fixture bundle for the demo application/environment/channel, and renders the validated bundle with `Renderer`.
+
+The demo transport is local-only. It returns the same high-level response shape as the runtime delivery API but performs no `fetch`, network call, external storage access, token handling, header handling, or tenant identity submission from the client.
+
+### DOM and data safety boundaries
+
+The demo and renderer use `textContent` and `replaceChildren` for diagnostics and rendered text. The renderer continues to create and remove only SDK-owned nodes marked with `data-adopta-renderer`.
+
+The demo does not introduce forms, inputs, value collection controls, raw markup injection, XPath, screen-coordinate matching, text matching, brittle selector fallback, analytics, event transport, external storage, or Property MTD integration.
+
+### Explicitly not built
+
+- Analytics pipeline.
+- Event transport.
+- Event Hubs.
+- ClickHouse.
+- AI assistant.
+- Browser extension.
+- Property MTD integration.
+- Studio UI.
+- CDN publishing.
+- Blob Storage publishing.
+- External delivery storage.
+- Backend/API changes.
+- Production Azure deployment automation.
+- EF migrations.
+- Migration execution.
+- Database creation.
+- Automatic startup migration.
+- Live database health checks.
+- Real SQL Server connectivity checks.
+- Appsettings changes.
+- Deployment files.
+- Database schema changes.
+
+### Commands to run
+
+```powershell
+pnpm typecheck
+pnpm build
+pnpm test
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+rg "innerHTML|XPath|screen-coordinate|text matching|querySelector\(|\.value|FormData|localStorage|sessionStorage|Authorization|Bearer|Password|ConnectionString|HMRC|tax|property|secret|token|claim" packages/runtime-sdk/src/rendering apps/runtime-demo/src packages/runtime-sdk/tests/renderer.test.ts apps/runtime-demo/tests
+```
+
+### Known limitations
+
+- The demo uses a mock delivery transport only.
+- Tooltip and callout/banner are the only rendered content types.
+- Checklist and walkthrough remain unsupported placeholder-safe results.
+- The demo does not authenticate, call the live runtime delivery API, use external storage, call analytics, or integrate with Property MTD.
+- No CDN, Blob Storage, event transport, browser extension, Studio UI, or production deployment automation exists.
+
+### Next recommended slice
+
+Close Sprint 6 with a final runtime delivery review and plan the next sprint direction, likely either controlled delivery persistence hardening, runtime renderer expansion for checklist/walkthrough contracts, or production runtime host authentication guidance.
