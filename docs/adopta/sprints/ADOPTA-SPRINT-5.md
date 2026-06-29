@@ -332,3 +332,127 @@ rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlS
 ### Next recommended slice
 
 Complete Sprint 5 with a final production-readiness closeout slice covering route/security guardrails, persistence enablement checklist status, and release-readiness documentation without executing migrations or adding deployment automation.
+
+## Slice 5 - Final production-readiness closeout
+
+### Requirement IDs covered
+
+- `FR-IDN-030` - Documented controlled persistence enablement status and outstanding database enablement gates.
+- `FR-IDN-031` - Documented tenant isolation status and future database-level hardening needs.
+- `FR-IDN-040` - Documented durable audit/history foundation status and operational constraints.
+- `FR-RBAC-001` - Documented API route authorization checklist and existing authoring/publishing permission coverage.
+- `FR-GOV-001` - Documented lifecycle history persistence status.
+- `FR-GOV-002` - Documented publishing API contract limitations and publishing history status.
+- `NFR-SEC-1` - Documented safe response, secret handling, migration approval, and no-sensitive-data constraints.
+- `NFR-TEST-1` - Added non-invasive documentation guardrail tests for production-readiness closeout documents.
+
+### Scope delivered
+
+- Added production-readiness closeout documentation.
+- Added controlled persistence enablement checklist.
+- Added API security and route authorization checklist.
+- Added migration execution approval checklist.
+- Updated the documentation index.
+- Added documentation guardrail tests for closeout coverage and secret-marker checks.
+
+### Sprint 5 closeout status
+
+Sprint 5 is complete at the controlled production-enablement foundation level.
+
+Production-ready foundation exists for:
+
+- reviewable EF schema baseline source;
+- disabled-by-default persistence;
+- SQL Server opt-in validation;
+- tenant-scoped repository boundaries;
+- durable audit/history repository seams;
+- authoring API route authorization;
+- controlled publishing API contract;
+- safe structural audit/history records;
+- migration and operational readiness documentation;
+- guardrail tests for migration/database mutation boundaries.
+
+The following are not production-enabled:
+
+- migration execution;
+- database creation;
+- automatic startup migration;
+- production Azure SQL deployment;
+- deployment automation;
+- live SQL Server connectivity checks;
+- database-level tenant isolation controls;
+- delivery API;
+- CDN or Blob Storage publishing;
+- runtime renderer;
+- analytics pipeline;
+- AI assistant;
+- Event Hubs or ClickHouse;
+- browser extension;
+- Property MTD integration.
+
+### Assumptions
+
+Migration execution is not approved by this slice. Production database enablement remains a future approval-gated activity.
+
+Repository files must not contain real connection strings, hostnames, passwords, tokens, tenant secrets, credentials, or environment-specific secret values.
+
+All production operations must continue to distinguish implemented foundation behaviour from future production enablement steps.
+
+### Explicitly not built
+
+- New product features.
+- New API endpoints.
+- Route behaviour changes.
+- Appsettings changes.
+- EF model changes.
+- EF migrations.
+- Migration execution.
+- Automatic database creation.
+- Automatic migration on startup.
+- Startup database mutation.
+- Production Azure SQL deployment.
+- Deployment automation.
+- Real SQL Server calls.
+- Live health checks.
+- Runtime SDK changes.
+- CI changes.
+- Studio UI.
+- Runtime renderer.
+- Delivery API.
+- Analytics pipeline.
+- AI assistant.
+- Event Hubs or ClickHouse.
+- Browser extension.
+- Property MTD integration.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+```
+
+### Known limitations
+
+- Production database migration execution remains unapproved.
+- SQL Server persistence is opt-in and not production-enabled by repository files.
+- Publishing remains contract-only and does not write bundles to a delivery store.
+- Database-level tenant isolation and row-level security remain future work.
+- Production deployment automation remains future work.
+
+### Next recommended sprint direction
+
+After Sprint 5 closeout, the next work should be explicitly planned as a new approved phase. Recommended options are:
+
+- approval-gated non-production migration execution and validation;
+- delivery API and runtime bundle retrieval foundation;
+- runtime renderer foundation;
+- database-level tenant isolation hardening;
+- production observability implementation after privacy and logging review.
