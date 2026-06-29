@@ -1,4 +1,5 @@
 using Adopta.Api.Auth;
+using Adopta.Api.Authoring;
 using Adopta.Api.Tenancy;
 using Adopta.Application;
 using Adopta.Application.Abstractions;
@@ -63,6 +64,8 @@ app.MapGet(
     }))
     .RequireAdoptaTenantContext()
     .RequireAdoptaPermission(AdoptaPermissionKeys.DiagnosticsRead);
+
+app.MapAuthoringEndpoints();
 
 app.Run();
 
