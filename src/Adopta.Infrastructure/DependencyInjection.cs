@@ -1,8 +1,10 @@
 using Adopta.Application.Abstractions;
+using Adopta.Application.Abstractions.Authoring;
 using Adopta.Application.Abstractions.Persistence;
 using Adopta.Application.Abstractions.Runtime;
 using Adopta.Domain.Tenancy;
 using Adopta.Infrastructure.Audit;
+using Adopta.Infrastructure.Authoring;
 using Adopta.Infrastructure.Identity;
 using Adopta.Infrastructure.Persistence;
 using Adopta.Infrastructure.Runtime;
@@ -64,6 +66,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditEventRepository, InMemoryAuditEventRepository>();
         services.AddScoped<ISecurityAuditEventRepository, InMemorySecurityAuditEventRepository>();
         services.AddScoped<IDeliveryBundleRepository, InMemoryDeliveryBundleRepository>();
+        services.AddScoped<IAuthoredContentRepository, InMemoryAuthoredContentRepository>();
 
         return services;
     }
