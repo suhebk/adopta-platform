@@ -5,6 +5,7 @@ using Adopta.Application.Abstractions.Authoring;
 using Adopta.Application.Abstractions.Persistence;
 using Adopta.Application.Authoring;
 using Adopta.Application.Identity;
+using Adopta.Application.Runtime;
 using Adopta.Domain.Authoring;
 using Adopta.Infrastructure.Persistence;
 
@@ -37,6 +38,10 @@ public static class AuthoringEndpoints
         app.MapPost("/authoring/content/{contentId:guid}/versions/{versionId:guid}/reject", RejectAsync)
             .RequireAdoptaTenantContext()
             .RequireAdoptaPermission(AdoptaPermissionKeys.AuthoringReview);
+
+        app.MapPost("/authoring/content/{contentId:guid}/versions/{versionId:guid}/publish", PublishAsync)
+            .RequireAdoptaTenantContext()
+            .RequireAdoptaPermission(AdoptaPermissionKeys.AuthoringPublish);
 
         return app;
     }
@@ -259,6 +264,76 @@ public static class AuthoringEndpoints
             []));
     }
 
+    private static async Task<IResult> PublishAsync(
+        Guid contentId,
+        Guid versionId,
+        PublishAuthoredContentRequest? request,
+        HttpContext httpContext,
+        IAdoptionTenantContext tenantContext,
+        IAuthoredContentRepository repository,
+        IAuthoredContentPublishingHistoryRepository publishingHistoryRepository,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            request ??= new PublishAuthoredContentRequest("", (DeliveryChannel)int.MinValue, null);
+
+            var actorUserId = ResolveActorUserId(httpContext, tenantContext);
+            var workflow = new AuthoredContentPublishingWorkflow();
+            var result = await workflow.PublishAsync(
+                repository,
+                new AuthoredContentPublishCommand(
+                    tenantContext.TenantId,
+                    contentId,
+                    versionId,
+                    actorUserId,
+                    request.Environment,
+                    request.Channel,
+                    request.RequestedAtUtc ?? DateTimeOffset.UtcNow),
+                cancellationToken);
+
+            return result.Status switch
+            {
+                AuthoredContentPublishStatus.Succeeded => await PersistPublishDecisionAsync(
+                    publishingHistoryRepository,
+                    result,
+                    cancellationToken),
+                AuthoredContentPublishStatus.NotFound => Results.NotFound(PublishFailed("not_found", result.Issues)),
+                AuthoredContentPublishStatus.InvalidRequest => Results.BadRequest(PublishFailed("invalid_publish_command", result.Issues)),
+                _ => Results.BadRequest(PublishFailed("publish_validation_failed", result.Issues))
+            };
+        }
+        catch (TenantAccessDeniedException)
+        {
+            return Results.NotFound(PublishFailed("not_found", [Issue("authored_content_not_found", "content", "Authored content was not found.")]));
+        }
+        catch
+        {
+            return Results.Problem(
+                title: "Publish command failed.",
+                detail: "The requested publish command could not be completed.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    private static async Task<IResult> PersistPublishDecisionAsync(
+        IAuthoredContentPublishingHistoryRepository publishingHistoryRepository,
+        AuthoredContentPublishResult result,
+        CancellationToken cancellationToken)
+    {
+        if (result.AuditRecord is not null)
+        {
+            await publishingHistoryRepository.AddAsync(result.AuditRecord, cancellationToken);
+        }
+
+        return Results.Ok(new PublishAuthoredContentResponse(
+            true,
+            "succeeded",
+            result.Bundle is null ? null : ToPublishBundleMetadataResponse(result.Bundle),
+            ToPublishingAuditResponse(result.AuditRecord),
+            []));
+    }
+
     private static Guid ResolveActorUserId(
         HttpContext httpContext,
         IAdoptionTenantContext tenantContext)
@@ -305,6 +380,34 @@ public static class AuthoringEndpoints
                 audit.OccurredAtUtc);
     }
 
+    private static PublishBundleMetadataResponse ToPublishBundleMetadataResponse(DeliveryBundle bundle)
+    {
+        return new PublishBundleMetadataResponse(
+            bundle.Content.BundleId,
+            bundle.TenantId,
+            bundle.ApplicationId,
+            bundle.Environment,
+            bundle.Channel,
+            bundle.Content.Version,
+            bundle.Content.GeneratedAtUtc,
+            bundle.Content.Items.Count);
+    }
+
+    private static PublishingAuditResponse? ToPublishingAuditResponse(AuthoredContentPublishingAuditRecord? audit)
+    {
+        return audit is null
+            ? null
+            : new PublishingAuditResponse(
+                audit.TenantId,
+                audit.ContentId,
+                audit.VersionId,
+                audit.ActorUserId,
+                audit.Environment,
+                audit.Channel,
+                audit.Result,
+                audit.OccurredAtUtc);
+    }
+
     private static AuthoringCommandResponse CommandSucceeded(
         string status,
         AuthoredContentResponse? content,
@@ -318,6 +421,18 @@ public static class AuthoringEndpoints
         IReadOnlyCollection<AuthoredContentValidationIssue> issues)
     {
         return new AuthoringCommandResponse(
+            false,
+            status,
+            null,
+            null,
+            issues.Select(issue => new AuthoringIssueResponse(issue.Code, issue.Path, issue.Message)).ToArray());
+    }
+
+    private static PublishAuthoredContentResponse PublishFailed(
+        string status,
+        IReadOnlyCollection<AuthoredContentValidationIssue> issues)
+    {
+        return new PublishAuthoredContentResponse(
             false,
             status,
             null,

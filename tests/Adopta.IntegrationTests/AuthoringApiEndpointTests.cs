@@ -5,6 +5,7 @@ using Adopta.Application.Abstractions.Authoring;
 using Adopta.Application.Abstractions.Persistence;
 using Adopta.Application.Authoring;
 using Adopta.Application.Identity;
+using Adopta.Application.Runtime;
 using Adopta.Domain.Authoring;
 using Adopta.Domain.Identity;
 using Adopta.Infrastructure.Authoring;
@@ -387,11 +388,176 @@ public sealed class AuthoringApiEndpointTests
         Assert.Empty(historyRepository.Records);
     }
 
+    [Fact]
+    public async Task Publish_requires_publish_permission()
+    {
+        var allowed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringPublish);
+        var denied = TestIdentitySeed.Create(
+            AdoptaPermissionKeys.AuthoringApprove,
+            allowed.InternalTenantId);
+        var content = await SeedContentAsync(allowed.InternalTenantId, ContentLifecycleState.Approved);
+        var version = Assert.Single(content.Versions);
+
+        using var factory = BuildFactoryWithSeeds(allowed, denied);
+        using var client = factory.CreateClient();
+        using var deniedRequest = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/authoring/content/{content.Id}/versions/{version.Id}/publish",
+            denied,
+            BuildPublishRequest());
+        using var allowedRequest = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/authoring/content/{content.Id}/versions/{version.Id}/publish",
+            allowed,
+            BuildPublishRequest());
+
+        var deniedResponse = await client.SendAsync(deniedRequest);
+        var allowedResponse = await client.SendAsync(allowedRequest);
+
+        Assert.Equal(HttpStatusCode.Forbidden, deniedResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, allowedResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Missing_permission_is_denied_for_publish()
+    {
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.DiagnosticsRead);
+        var content = await SeedContentAsync(seed.InternalTenantId, ContentLifecycleState.Approved);
+        var version = Assert.Single(content.Versions);
+
+        using var factory = BuildFactoryWithSeed(seed);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/authoring/content/{content.Id}/versions/{version.Id}/publish",
+            seed,
+            BuildPublishRequest());
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Invalid_publish_command_returns_safe_typed_failure_and_does_not_create_history()
+    {
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringPublish);
+        var content = await SeedContentAsync(seed.InternalTenantId, ContentLifecycleState.Approved);
+        var version = Assert.Single(content.Versions);
+        var publishingHistoryRepository = new TestPublishingHistoryRepository();
+
+        using var factory = BuildFactoryWithSeed(
+            seed,
+            publishingHistoryRepository: publishingHistoryRepository);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/authoring/content/{content.Id}/versions/{version.Id}/publish",
+            seed,
+            new PublishAuthoredContentRequest("", DeliveryChannel.Published, null));
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadFromJsonAsync<PublishAuthoredContentResponse>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.NotNull(body);
+        Assert.False(body.Succeeded);
+        Assert.Equal("invalid_publish_command", body.Status);
+        Assert.Null(body.Bundle);
+        Assert.Null(body.Audit);
+        Assert.Contains(body.Issues, issue => issue.Code == "invalid_publish_environment");
+        Assert.Empty(publishingHistoryRepository.Records);
+        Assert.DoesNotContain(seed.InternalTenantId.ToString(), string.Join(" ", body.Issues.Select(issue => issue.Message)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Cross_tenant_publish_access_is_hidden_safely()
+    {
+        var tenantA = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringPublish);
+        var tenantB = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringPublish);
+        var tenantBContent = await SeedContentAsync(tenantB.InternalTenantId, ContentLifecycleState.Approved);
+        var version = Assert.Single(tenantBContent.Versions);
+        var publishingHistoryRepository = new TestPublishingHistoryRepository();
+
+        using var factory = BuildFactoryWithSeed(
+            tenantA,
+            publishingHistoryRepository: publishingHistoryRepository);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/authoring/content/{tenantBContent.Id}/versions/{version.Id}/publish",
+            tenantA,
+            BuildPublishRequest());
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.DoesNotContain(tenantB.InternalTenantId.ToString(), body, StringComparison.Ordinal);
+        Assert.DoesNotContain(tenantBContent.Id.ToString(), body, StringComparison.Ordinal);
+        Assert.Empty(publishingHistoryRepository.Records);
+    }
+
+    [Fact]
+    public async Task Successful_publish_creates_one_publishing_history_record_and_safe_response()
+    {
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringPublish);
+        var content = await SeedContentAsync(seed.InternalTenantId, ContentLifecycleState.Approved);
+        var version = Assert.Single(content.Versions);
+        var publishingHistoryRepository = new TestPublishingHistoryRepository();
+
+        using var factory = BuildFactoryWithSeed(
+            seed,
+            publishingHistoryRepository: publishingHistoryRepository);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            $"/authoring/content/{content.Id}/versions/{version.Id}/publish",
+            seed,
+            BuildPublishRequest());
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadFromJsonAsync<PublishAuthoredContentResponse>();
+        var rawBody = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(body);
+        Assert.True(body.Succeeded);
+        Assert.Equal("succeeded", body.Status);
+        Assert.NotNull(body.Bundle);
+        Assert.Equal(seed.InternalTenantId, body.Bundle.TenantId);
+        Assert.Equal(content.ApplicationId, body.Bundle.ApplicationId);
+        Assert.Equal("production", body.Bundle.Environment);
+        Assert.Equal(DeliveryChannel.Published, body.Bundle.Channel);
+        Assert.Equal(version.Version, body.Bundle.Version);
+        Assert.Equal(1, body.Bundle.ItemCount);
+        Assert.NotNull(body.Audit);
+        Assert.Equal(seed.InternalTenantId, body.Audit.TenantId);
+        Assert.Equal(content.Id, body.Audit.ContentId);
+        Assert.Equal(version.Id, body.Audit.VersionId);
+        Assert.Equal("Succeeded", body.Audit.Result);
+
+        var record = Assert.Single(publishingHistoryRepository.Records);
+        Assert.Equal(seed.InternalTenantId, record.TenantId);
+        Assert.Equal(content.Id, record.ContentId);
+        Assert.Equal(version.Id, record.VersionId);
+        Assert.Equal("production", record.Environment);
+        Assert.Equal(DeliveryChannel.Published, record.Channel);
+        Assert.Equal("Succeeded", record.Result);
+
+        Assert.DoesNotContain("Submit return", rawBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("Body", rawBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Bearer", rawBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Password", rawBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ConnectionString", rawBody, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static WebApplicationFactory<Program> BuildFactoryWithSeed(
         TestIdentitySeed seed,
-        IAuthoredContentLifecycleHistoryRepository? lifecycleHistoryRepository = null)
+        IAuthoredContentLifecycleHistoryRepository? lifecycleHistoryRepository = null,
+        IAuthoredContentPublishingHistoryRepository? publishingHistoryRepository = null)
     {
-        return BuildFactoryWithSeeds([seed], lifecycleHistoryRepository);
+        return BuildFactoryWithSeeds([seed], lifecycleHistoryRepository, publishingHistoryRepository);
     }
 
     private static WebApplicationFactory<Program> BuildFactoryWithSeeds(params TestIdentitySeed[] seeds)
@@ -401,7 +567,8 @@ public sealed class AuthoringApiEndpointTests
 
     private static WebApplicationFactory<Program> BuildFactoryWithSeeds(
         TestIdentitySeed[] seeds,
-        IAuthoredContentLifecycleHistoryRepository? lifecycleHistoryRepository)
+        IAuthoredContentLifecycleHistoryRepository? lifecycleHistoryRepository,
+        IAuthoredContentPublishingHistoryRepository? publishingHistoryRepository = null)
     {
         var tenantStore = new InMemoryAdoptaTenantMappingStore();
         var userStore = new InMemoryAuthenticatedUserMappingStore();
@@ -415,13 +582,14 @@ public sealed class AuthoringApiEndpointTests
                 BuildUser(seed.InternalTenantId, seed.SubjectId, seed.PermissionKey));
         }
 
-        return BuildFactory(tenantStore, userStore, lifecycleHistoryRepository);
+        return BuildFactory(tenantStore, userStore, lifecycleHistoryRepository, publishingHistoryRepository);
     }
 
     private static WebApplicationFactory<Program> BuildFactory(
         InMemoryAdoptaTenantMappingStore? tenantStore = null,
         InMemoryAuthenticatedUserMappingStore? userStore = null,
-        IAuthoredContentLifecycleHistoryRepository? lifecycleHistoryRepository = null)
+        IAuthoredContentLifecycleHistoryRepository? lifecycleHistoryRepository = null,
+        IAuthoredContentPublishingHistoryRepository? publishingHistoryRepository = null)
     {
         tenantStore ??= new InMemoryAdoptaTenantMappingStore();
         userStore ??= new InMemoryAuthenticatedUserMappingStore();
@@ -447,6 +615,12 @@ public sealed class AuthoringApiEndpointTests
                     {
                         services.RemoveAll<IAuthoredContentLifecycleHistoryRepository>();
                         services.AddSingleton(lifecycleHistoryRepository);
+                    }
+
+                    if (publishingHistoryRepository is not null)
+                    {
+                        services.RemoveAll<IAuthoredContentPublishingHistoryRepository>();
+                        services.AddSingleton(publishingHistoryRepository);
                     }
                 });
             });
@@ -476,6 +650,13 @@ public sealed class AuthoringApiEndpointTests
             new HttpRequestMessage(HttpMethod.Post, $"/authoring/content/{contentId}/versions/{versionId}/reject")
             {
                 Content = JsonContent.Create(new ApprovalDecisionRequest(null))
+            },
+            new HttpRequestMessage(HttpMethod.Post, $"/authoring/content/{contentId}/versions/{versionId}/publish")
+            {
+                Content = JsonContent.Create(new PublishAuthoredContentRequest(
+                    "production",
+                    DeliveryChannel.Published,
+                    null))
             }
         ];
     }
@@ -507,6 +688,14 @@ public sealed class AuthoringApiEndpointTests
             "billing.submit",
             "Submit return",
             "1.0.0");
+    }
+
+    private static PublishAuthoredContentRequest BuildPublishRequest()
+    {
+        return new PublishAuthoredContentRequest(
+            "production",
+            DeliveryChannel.Published,
+            null);
     }
 
     private static async Task<AuthoredContentItem> SeedContentAsync(
@@ -592,6 +781,28 @@ public sealed class AuthoringApiEndpointTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyCollection<AuthoredContentLifecycleAuditRecord>>(_records.ToArray());
+        }
+    }
+
+    private sealed class TestPublishingHistoryRepository : IAuthoredContentPublishingHistoryRepository
+    {
+        private readonly List<AuthoredContentPublishingAuditRecord> _records = [];
+
+        public IReadOnlyCollection<AuthoredContentPublishingAuditRecord> Records => _records;
+
+        public Task AddAsync(
+            AuthoredContentPublishingAuditRecord auditRecord,
+            CancellationToken cancellationToken = default)
+        {
+            _records.Add(auditRecord);
+
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyCollection<AuthoredContentPublishingAuditRecord>> ListAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyCollection<AuthoredContentPublishingAuditRecord>>(_records.ToArray());
         }
     }
 }
