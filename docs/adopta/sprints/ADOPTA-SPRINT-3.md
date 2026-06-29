@@ -142,3 +142,76 @@ rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.ya
 ### Next recommended slice
 
 Add authoring API contract boundaries for tenant-scoped lifecycle commands and queries, enforcing the authoring permission keys and audit requirements introduced in this slice.
+
+## Slice 3 - Authoring API contract boundaries
+
+### Requirement IDs covered
+
+- `FR-AUT-010` - Added Minimal API contract boundaries for tenant-scoped authored content commands and queries.
+- `FR-AUT-011` - Added safe request and response DTOs for create, get, list, review request, approval, and rejection commands.
+- `FR-AUT-012` - Authoring API boundaries enforce tenant context and authoring permission keys.
+- `FR-AUT-013` - Lifecycle command endpoints use the existing approval workflow seam and safe audit record shape.
+- `FR-IDN-031` - Cross-tenant authored content access is denied or hidden safely.
+- `NFR-SEC-1` - API responses avoid tokens, headers, raw claims, form values, input values, tax data, HMRC data, property data, raw content body, and sensitive values in errors.
+- `NFR-TEST-1` - Added integration tests for tenant context, permissions, tenant scope, lifecycle commands, and safe invalid-command behavior.
+
+### Scope delivered
+
+- Added `/authoring/content` Minimal API endpoint shells:
+  - `POST /authoring/content`;
+  - `GET /authoring/content/{contentId}`;
+  - `GET /authoring/content`;
+  - `POST /authoring/content/{contentId}/versions/{versionId}/request-review`;
+  - `POST /authoring/content/{contentId}/versions/{versionId}/approve`;
+  - `POST /authoring/content/{contentId}/versions/{versionId}/reject`.
+- Added safe API DTOs for authored content command and query boundaries.
+- Enforced tenant context on every authoring endpoint.
+- Enforced existing authoring permissions:
+  - create requires `Authoring.Manage`;
+  - get/list require `Authoring.Read`;
+  - request review requires `Authoring.Review`;
+  - approve requires `Authoring.Approve`;
+  - reject requires `Authoring.Review`.
+- Used existing repository, validator, and approval workflow seams.
+
+### Assumptions
+
+This slice provides API boundary foundations only. The endpoints validate and route commands through existing in-memory seams but do not introduce durable persistence, production publishing, UI screens, or renderer behavior.
+
+Lifecycle command responses may include the safe structural lifecycle audit shape from the workflow seam. They do not persist audit history in this slice.
+
+### Explicitly not built
+
+- Full Adoption Studio UI.
+- Authoring screens.
+- Publishing implementation.
+- Runtime renderer.
+- AI assistant.
+- Analytics pipeline.
+- Event Hubs or ClickHouse.
+- Browser extension.
+- Property MTD integration.
+- EF Core, `DbContext`, EF migrations, or production database infrastructure.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+```
+
+### Known limitations
+
+- Endpoint handlers use in-memory/foundation repositories only.
+- Lifecycle endpoints validate workflow decisions but do not mutate authored content state.
+- Lifecycle audit records are returned as safe command metadata only and are not durably persisted.
+- No full authoring UI or publishing behavior exists yet.
+
+### Next recommended slice
+
+Add publishing contract design and version-to-runtime bundle mapping boundaries, still without implementing production publishing infrastructure or a full authoring UI.
