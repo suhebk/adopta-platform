@@ -163,3 +163,79 @@ rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.ya
 ### Next recommended slice
 
 Add migration strategy and operational persistence validation planning, including how tenant isolation will be enforced at the database boundary without enabling automatic migrations or production database deployment prematurely.
+
+## Slice 3 - Migration strategy and operational persistence validation planning
+
+### Requirement IDs covered
+
+- `FR-IDN-030` - Documented migration planning requirements for tenant-owned persisted records.
+- `FR-IDN-031` - Documented database-boundary tenant isolation design and future hardening options.
+- `FR-IDN-040` - Documented audit/security audit persistence validation expectations.
+- `FR-GOV-002` - Documented environment promotion and rollback strategy for future schema changes.
+- `NFR-SEC-1` - Documented safe secret handling, no startup migration, and approval-gated operational controls.
+- `NFR-TEST-1` - Added migration-readiness guardrail tests.
+
+### Scope delivered
+
+- Added persistence migration strategy documentation.
+- Added database-boundary tenant isolation design documentation.
+- Added persistence operations runbook.
+- Updated the Adopta documentation index.
+- Added guardrail tests for:
+  - no migration execution calls;
+  - no automatic database creation calls;
+  - no EF Design package reference;
+  - disabled-by-default persistence config;
+  - no real connection strings in appsettings;
+  - required persistence documentation sections.
+
+### Migration and operational assumptions
+
+This slice is planning and validation only. It does not generate migrations, add EF Design tooling, execute migrations, connect to a database, create databases, or deploy production infrastructure.
+
+Future migrations must be explicit, manual, reviewed, approval-gated, and executed outside normal application startup. Production secrets must come from secure configuration such as Key Vault or equivalent, not repository files.
+
+Database-level tenant isolation hardening is documented as a future defense-in-depth layer. It does not replace current application-level tenant filtering or EF repository boundary checks.
+
+### Explicitly not built
+
+- EF migrations.
+- Migration execution.
+- Automatic database creation.
+- Automatic migration on startup.
+- Production Azure SQL deployment.
+- Health/readiness checks.
+- Repository changes.
+- Full Adoption Studio UI or content editor.
+- Runtime renderer.
+- AI assistant.
+- Analytics pipeline.
+- Event Hubs or ClickHouse.
+- Browser extension.
+- Property MTD integration.
+- Large-scale infrastructure automation.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests
+```
+
+### Known limitations
+
+- No EF migration files exist yet.
+- No EF Design package is referenced.
+- No database-level tenant isolation policy or RLS implementation exists.
+- No operational automation or deployment integration exists.
+- Migration commands remain placeholders pending a future approved migration slice.
+
+### Next recommended slice
+
+Add persistence configuration validation and operational readiness contracts, still without implementing health checks, migration execution, production database deployment, or automatic startup database mutation.
