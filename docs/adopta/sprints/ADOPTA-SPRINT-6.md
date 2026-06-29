@@ -159,3 +159,86 @@ rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlS
 ### Next recommended slice
 
 Add controlled delivery persistence hardening and operational validation for runtime bundle storage, while keeping external storage, CDN, Blob Storage, renderer behaviour, migration execution, and production deployment automation out of scope until explicitly approved.
+
+## Slice 3 - Runtime SDK delivery client
+
+### Requirement IDs covered
+
+- `FR-AUT-016` - Added a framework-agnostic runtime SDK delivery client for retrieving existing delivery bundle contracts.
+- `FR-IDN-031` - Mapped SDK bundle retrieval to the tenant-scoped runtime delivery API boundary without sending tenant identity from the SDK.
+- `NFR-SEC-1` - Kept delivery errors and logger metadata safe and avoided tokens, headers, claims, secrets, connection strings, raw DOM text, field/form values, tax/HMRC/property data, and user-entered values.
+- `NFR-PERF-1` - Added timeout/cancellation boundaries to the SDK delivery request contract.
+- `NFR-TEST-1` - Added TypeScript tests for URL construction, success normalization, validation, status mapping, network failure, timeout/cancellation, malformed responses, and safe logging/result messages.
+
+### Scope delivered
+
+- Added `DeliveryClient` to `@adopta/runtime-sdk`.
+- Added delivery client options, request, result, and transport contracts.
+- Added a minimal fetch-backed transport abstraction for framework-agnostic use and testability.
+- Mapped SDK requests to `GET /runtime/delivery/bundles/{applicationId}?environment={environment}&channel={channel}`.
+- Normalized successful API responses into the existing `ContentBundle` contract.
+- Validated returned content using `validateContentBundle`.
+- Returned typed safe failures for invalid request, unauthorized, forbidden, not found, network failure, timeout, unexpected response, and bundle validation failure.
+
+### Assumptions
+
+Tenant identity remains server-side. The SDK does not send tenant ID in route, query, or body. The optional `expectedTenantId` client option is validation-only and is never added to the delivery API request.
+
+Authentication remains host-owned. The SDK does not accept, store, log, or expose tokens or headers. Hosts that need custom authorization can provide a custom delivery transport without making token handling part of the SDK contract.
+
+The delivery client is contract-only. It retrieves and validates bundle data but does not render guidance, mutate DOM, mount components, inspect page contents, capture form values, or evaluate targeting.
+
+### Explicitly not built
+
+- Runtime renderer.
+- Tooltip renderer.
+- Banner renderer.
+- Walkthrough renderer.
+- Checklist renderer.
+- DOM mounting.
+- DOM mutation.
+- Analytics pipeline.
+- CDN publishing.
+- Blob Storage publishing.
+- Delivery external storage.
+- Event Hubs.
+- ClickHouse.
+- AI assistant.
+- Browser extension.
+- Property MTD integration.
+- Studio UI.
+- Production Azure deployment automation.
+- EF migrations.
+- Migration execution.
+- Database creation.
+- Automatic startup migration.
+- Live database health checks.
+- Real SQL Server connectivity checks.
+- Appsettings changes.
+- Deployment files.
+- Database schema changes.
+
+### Commands to run
+
+```powershell
+pnpm typecheck
+pnpm build
+pnpm test
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+```
+
+### Known limitations
+
+- The delivery client retrieves and validates bundles only; it does not render content.
+- Authentication remains host-owned through browser/session behavior or a caller-provided transport.
+- The SDK has no external delivery storage, CDN, Blob Storage, analytics, browser extension, or Property MTD integration.
+- The runtime demo remains local/static and was not changed in this slice.
+
+### Next recommended slice
+
+Add runtime renderer foundation for safe, accessible, non-invasive display of retrieved bundle content, while keeping analytics, external delivery storage, CDN, Blob Storage, browser extension, Property MTD integration, and production deployment automation out of scope until explicitly approved.
