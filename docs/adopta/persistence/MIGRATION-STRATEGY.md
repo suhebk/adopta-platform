@@ -10,12 +10,12 @@ This document defines the migration strategy for Adopta's future SQL Server pers
 - In-memory repositories remain the default application behavior.
 - SQL Server persistence is opt-in through explicit configuration.
 - EF repository implementations exist for selected seams only.
-- No EF migrations exist yet.
+- A reviewable initial EF schema baseline migration exists, but execution is not approved.
 - No startup migration, database creation, or schema mutation is allowed.
 
 ## Baseline Schema Approach
 
-The first approved migration should establish a controlled schema baseline from the current `AdoptaDbContext` model. The baseline should be reviewed as a schema contract before it is applied to any shared environment.
+The first generated migration establishes a controlled schema baseline from the current `AdoptaDbContext` model. The baseline is documented in `SCHEMA-BASELINE-REVIEW.md` and must be reviewed as a schema contract before it is applied to any shared environment.
 
 The baseline review should confirm:
 
@@ -28,7 +28,7 @@ The baseline review should confirm:
 
 ## Migration Generation Strategy
 
-Migration generation is a future, manually approved activity. It should happen in a dedicated migration slice after the schema baseline is approved.
+Migration generation is now approval-gated and limited to the initial schema baseline source. Migration execution remains a future, manually approved activity.
 
 Future placeholder command shape:
 
@@ -38,7 +38,7 @@ Future placeholder command shape:
 dotnet ef migrations add <ApprovedMigrationName> --project src/Adopta.Infrastructure --startup-project src/Adopta.Api --context AdoptaDbContext
 ```
 
-This repository must not add `Microsoft.EntityFrameworkCore.Design`, migration files, or `dotnet ef` execution until that future slice is approved.
+This repository must not add migration execution or `dotnet ef` execution against a real database until that future slice is approved.
 
 ## Environment Promotion Flow
 
@@ -98,7 +98,7 @@ Before any future production migration, operators should validate:
 
 ## Explicit Non-Goals
 
-- No EF migrations in this slice.
+- No migration execution in this slice.
 - No migration execution.
 - No automatic database creation.
 - No automatic migration on startup.
