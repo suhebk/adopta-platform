@@ -3,6 +3,7 @@ namespace Adopta.Infrastructure.Persistence;
 public sealed class AdoptaPersistenceOptions
 {
     public const string SectionName = "Persistence";
+    public const string SqlServerProvider = "SqlServer";
 
     public bool Enabled { get; set; }
 

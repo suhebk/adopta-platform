@@ -87,52 +87,28 @@ public static class DependencyInjection
 
     private static bool ConfigurePersistence(IServiceCollection services, IConfiguration? configuration)
     {
-        if (configuration is null)
-        {
-            services.Configure<AdoptaPersistenceOptions>(_ => { });
-            return false;
-        }
-
-        var section = configuration.GetSection(AdoptaPersistenceOptions.SectionName);
+        var persistenceOptions = AdoptaPersistenceConfigurationValidator.ReadOptions(configuration);
         services.Configure<AdoptaPersistenceOptions>(options =>
         {
-            options.Enabled = bool.TryParse(section[nameof(AdoptaPersistenceOptions.Enabled)], out var enabled) && enabled;
-            options.Provider = section[nameof(AdoptaPersistenceOptions.Provider)];
-            options.SqlServer.ConnectionStringName =
-                section.GetSection(nameof(AdoptaPersistenceOptions.SqlServer))[
-                    nameof(SqlServerPersistenceOptions.ConnectionStringName)];
+            var configuredOptions = AdoptaPersistenceConfigurationValidator.ReadOptions(configuration);
+            options.Enabled = configuredOptions.Enabled;
+            options.Provider = configuredOptions.Provider;
+            options.SqlServer.ConnectionStringName = configuredOptions.SqlServer.ConnectionStringName;
         });
 
-        var options = new AdoptaPersistenceOptions
-        {
-            Enabled = bool.TryParse(section[nameof(AdoptaPersistenceOptions.Enabled)], out var enabled) && enabled,
-            Provider = section[nameof(AdoptaPersistenceOptions.Provider)]
-        };
-        options.SqlServer.ConnectionStringName =
-            section.GetSection(nameof(AdoptaPersistenceOptions.SqlServer))[
-                nameof(SqlServerPersistenceOptions.ConnectionStringName)];
-
-        if (!options.Enabled)
+        if (!persistenceOptions.Enabled)
         {
             return false;
         }
 
-        if (!string.Equals(options.Provider, "SqlServer", StringComparison.Ordinal))
+        var validation = AdoptaPersistenceConfigurationValidator.Validate(persistenceOptions, configuration);
+        if (!validation.IsValid)
         {
-            throw new InvalidOperationException("Persistence is enabled but SQL Server persistence is not configured.");
+            throw new InvalidOperationException(
+                AdoptaPersistenceConfigurationValidator.SafeConfigurationErrorMessage);
         }
 
-        if (string.IsNullOrWhiteSpace(options.SqlServer.ConnectionStringName))
-        {
-            throw new InvalidOperationException("Persistence is enabled but SQL Server persistence is not configured.");
-        }
-
-        var connectionString = configuration.GetConnectionString(options.SqlServer.ConnectionStringName);
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException("Persistence is enabled but SQL Server persistence is not configured.");
-        }
-
+        var connectionString = configuration!.GetConnectionString(persistenceOptions.SqlServer.ConnectionStringName!);
         services.AddDbContext<AdoptaDbContext>(dbContextOptions =>
             dbContextOptions.UseSqlServer(connectionString));
         return true;

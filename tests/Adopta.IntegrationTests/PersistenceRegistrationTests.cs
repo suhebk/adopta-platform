@@ -34,8 +34,7 @@ public sealed class PersistenceRegistrationTests
                 ["Persistence:Enabled"] = "true",
                 ["Persistence:Provider"] = "SqlServer",
                 ["Persistence:SqlServer:ConnectionStringName"] = "AdoptaSqlServer",
-                ["ConnectionStrings:AdoptaSqlServer"] =
-                    "Server=(local);Database=AdoptaRegistrationOnly;Trusted_Connection=True;TrustServerCertificate=True"
+                ["ConnectionStrings:AdoptaSqlServer"] = "__configured_by_secure_provider__"
             })
             .Build();
 
