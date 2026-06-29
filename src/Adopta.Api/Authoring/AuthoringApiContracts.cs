@@ -1,4 +1,5 @@
 using Adopta.Domain.Authoring;
+using Adopta.Application.Runtime;
 
 namespace Adopta.Api.Authoring;
 
@@ -31,6 +32,11 @@ public sealed record RequestReviewRequest(
 public sealed record ApprovalDecisionRequest(
     DateTimeOffset? DecidedAtUtc);
 
+public sealed record PublishAuthoredContentRequest(
+    string Environment,
+    DeliveryChannel Channel,
+    DateTimeOffset? RequestedAtUtc);
+
 public sealed record AuthoringCommandResponse(
     bool Succeeded,
     string Status,
@@ -46,6 +52,33 @@ public sealed record LifecycleDecisionAuditResponse(
     string LifecycleAction,
     ContentLifecycleState FromState,
     ContentLifecycleState ToState,
+    string Result,
+    DateTimeOffset OccurredAtUtc);
+
+public sealed record PublishAuthoredContentResponse(
+    bool Succeeded,
+    string Status,
+    PublishBundleMetadataResponse? Bundle,
+    PublishingAuditResponse? Audit,
+    IReadOnlyCollection<AuthoringIssueResponse> Issues);
+
+public sealed record PublishBundleMetadataResponse(
+    string BundleId,
+    Guid TenantId,
+    Guid ApplicationId,
+    string Environment,
+    DeliveryChannel Channel,
+    string Version,
+    DateTimeOffset GeneratedAtUtc,
+    int ItemCount);
+
+public sealed record PublishingAuditResponse(
+    Guid TenantId,
+    Guid ContentId,
+    Guid VersionId,
+    Guid ActorUserId,
+    string Environment,
+    DeliveryChannel Channel,
     string Result,
     DateTimeOffset OccurredAtUtc);
 

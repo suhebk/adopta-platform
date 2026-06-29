@@ -244,3 +244,91 @@ rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlS
 ### Next recommended slice
 
 Add controlled publishing API contract hardening or operational diagnostics around persistence readiness, while keeping migration execution and production database mutation separately approval-gated.
+
+## Slice 4 - Controlled publishing API contract hardening
+
+### Requirement IDs covered
+
+- `FR-IDN-031` - Added tenant-required publishing API boundary for authored content versions.
+- `FR-RBAC-001` - Enforced the existing `Authoring.Publish` permission key on the publishing route.
+- `FR-GOV-002` - Added a controlled publish command endpoint that uses the existing publishing workflow and persists successful publishing history records.
+- `FR-IDN-040` - Used the approved publishing history repository seam while preserving in-memory defaults and SQL Server opt-in behaviour.
+- `NFR-SEC-1` - Kept publish responses, errors, and persisted audit records minimal, structural, and non-sensitive.
+- `NFR-TEST-1` - Added integration coverage for publish authorization, invalid command failure, cross-tenant hiding, safe response shape, and publishing history persistence.
+
+### Scope delivered
+
+- Added `POST /authoring/content/{contentId}/versions/{versionId}/publish`.
+- Required tenant context through the existing tenant endpoint filter.
+- Required `AdoptaPermissionKeys.AuthoringPublish`.
+- Added safe publishing request and response DTOs.
+- Used `AuthoredContentPublishingWorkflow` for validation and contract-only bundle mapping.
+- Persisted `AuthoredContentPublishingAuditRecord` through `IAuthoredContentPublishingHistoryRepository` only after successful publish validation.
+- Kept failed, denied, invalid, and cross-tenant publish commands non-persistent.
+- Returned safe publish metadata only:
+  - success/status;
+  - bundle ID;
+  - tenant/application IDs for the successful caller's tenant;
+  - environment/channel;
+  - version;
+  - generated timestamp;
+  - item count;
+  - structural audit metadata;
+  - typed issues.
+
+### Assumptions
+
+Publishing remains contract-only in this slice. The endpoint validates and maps to the existing runtime bundle contract, but it does not deliver or externally publish the bundle.
+
+Publishing history records remain structural metadata only. They do not store content body, raw authored content, tokens, headers, raw claims, form values, input values, tax data, HMRC data, property data, connection strings, secrets, credentials, or sensitive values.
+
+Default behaviour remains in-memory. EF/durable persistence remains explicitly opt-in through the existing SQL Server persistence configuration.
+
+### Explicitly not built
+
+- EF migrations.
+- Migration execution.
+- Automatic database creation.
+- Automatic migration on startup.
+- Production Azure SQL deployment.
+- Deployment automation.
+- Real SQL Server connectivity checks.
+- Live health checks.
+- Appsettings changes.
+- Delivery API.
+- CDN publishing.
+- Blob Storage publishing.
+- Runtime bundle external storage.
+- Runtime renderer behaviour.
+- External publishing transport.
+- Studio UI.
+- Analytics pipeline.
+- AI assistant.
+- Event Hubs or ClickHouse.
+- Browser extension.
+- Property MTD integration.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+```
+
+### Known limitations
+
+- Publishing remains contract-only and does not write bundles to a delivery store.
+- No delivery API, CDN, Blob Storage, renderer, or external publishing side effect exists.
+- Migration execution and production database mutation remain separately approval-gated.
+- Database-level tenant isolation and RLS-style hardening remain future work.
+
+### Next recommended slice
+
+Complete Sprint 5 with a final production-readiness closeout slice covering route/security guardrails, persistence enablement checklist status, and release-readiness documentation without executing migrations or adding deployment automation.
