@@ -29,6 +29,7 @@ Property Income MTD remains undisturbed while its remaining sprints continue. Ad
 | 06 | Retrofit Decisions & Spec Updates | Decisions that supersede baseline assumptions, including Codex, .NET-first, first-party SDK mode, and maximum five sprints. |
 | setup | Local Setup Steps | Exact local and GitHub setup steps for the user's chosen path. |
 | sprints | ADOPTA-SPRINT-1 | Sprint 1 scope, acceptance criteria, Codex prompt, and guardrails. |
+| persistence | Migration & Operations Planning | Migration strategy, database-boundary tenant isolation design, and persistence operations runbook. |
 
 ## Important superseding decisions
 
