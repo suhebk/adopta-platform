@@ -13,6 +13,7 @@ public static class AdoptaPermissionKeys
     public const string AuthoringReview = "Authoring.Review";
     public const string AuthoringApprove = "Authoring.Approve";
     public const string AuthoringPublish = "Authoring.Publish";
+    public const string RuntimeDeliveryRead = "RuntimeDelivery.Read";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
@@ -26,6 +27,7 @@ public static class AdoptaPermissionKeys
         AuthoringManage,
         AuthoringReview,
         AuthoringApprove,
-        AuthoringPublish
+        AuthoringPublish,
+        RuntimeDeliveryRead
     };
 }
