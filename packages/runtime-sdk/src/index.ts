@@ -95,3 +95,20 @@ export {
   type RuntimeEventQueueSuccess
 } from "./events/EventQueue";
 export { runtimeAccessibilityContract } from "./a11y/AccessibilityContract";
+export { DeliveryClient } from "./delivery/DeliveryClient";
+export type { DeliveryClientOptions } from "./delivery/DeliveryClientOptions";
+export type { DeliveryRequest } from "./delivery/DeliveryRequest";
+export {
+  createDeliveryFailureResult,
+  type DeliveryFailure,
+  type DeliveryFailureCode,
+  type DeliveryFailureResult,
+  type DeliveryResult,
+  type DeliverySuccess
+} from "./delivery/DeliveryResult";
+export {
+  createFetchDeliveryTransport,
+  type DeliveryTransport,
+  type DeliveryTransportRequest,
+  type DeliveryTransportResponse
+} from "./delivery/DeliveryTransport";
