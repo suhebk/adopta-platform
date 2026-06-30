@@ -109,4 +109,64 @@ public sealed class LocalStudioContentClient : IStudioContentClient
             editor,
             "Draft metadata saved locally."));
     }
+
+    public Task<StudioContentClientResult<StudioWorkflowActionModel>> RequestReviewAsync(
+        StudioWorkflowActionRequest request,
+        CancellationToken cancellationToken) =>
+        ExecuteWorkflowActionAsync(
+            request,
+            StudioWorkflowActionKind.RequestReview,
+            cancellationToken);
+
+    public Task<StudioContentClientResult<StudioWorkflowActionModel>> ApproveAsync(
+        StudioWorkflowActionRequest request,
+        CancellationToken cancellationToken) =>
+        ExecuteWorkflowActionAsync(
+            request,
+            StudioWorkflowActionKind.Approve,
+            cancellationToken);
+
+    public Task<StudioContentClientResult<StudioWorkflowActionModel>> RejectAsync(
+        StudioWorkflowActionRequest request,
+        CancellationToken cancellationToken) =>
+        ExecuteWorkflowActionAsync(
+            request,
+            StudioWorkflowActionKind.Reject,
+            cancellationToken);
+
+    private static Task<StudioContentClientResult<StudioWorkflowActionModel>> ExecuteWorkflowActionAsync(
+        StudioWorkflowActionRequest request,
+        StudioWorkflowActionKind action,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (request.ContentId == Guid.Empty || request.VersionId == Guid.Empty)
+        {
+            return Task.FromResult(StudioContentClientResult<StudioWorkflowActionModel>.InvalidResponse());
+        }
+
+        var content = StudioContentFoundationData.Loaded()
+            .Items
+            .FirstOrDefault(item => item.Id == request.ContentId);
+
+        if (content?.CurrentVersion is null || content.CurrentVersion.Id != request.VersionId)
+        {
+            return Task.FromResult(StudioContentClientResult<StudioWorkflowActionModel>.NotFound());
+        }
+
+        var workflow = StudioWorkflowActionModel.FromContent(content);
+        var validation = workflow.Validate(action);
+        if (!validation.Succeeded)
+        {
+            workflow.ApplyValidationResult(validation);
+            return Task.FromResult(StudioContentClientResult<StudioWorkflowActionModel>.ValidationError(workflow));
+        }
+
+        workflow.MarkSucceeded(action);
+
+        return Task.FromResult(StudioContentClientResult<StudioWorkflowActionModel>.Success(
+            workflow,
+            "Review workflow action completed locally."));
+    }
 }

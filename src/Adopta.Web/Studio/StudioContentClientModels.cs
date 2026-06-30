@@ -20,3 +20,7 @@ public sealed record StudioContentUpdateDraftRequest(
     string ContentKey,
     RuntimeContentType? ContentType,
     string Version);
+
+public sealed record StudioWorkflowActionRequest(
+    Guid ContentId,
+    Guid VersionId);

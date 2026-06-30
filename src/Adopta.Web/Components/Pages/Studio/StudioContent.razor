@@ -172,6 +172,69 @@
                                 </div>
                             </dl>
                         </section>
+
+                        <section class="studio-content__workflow" aria-labelledby="review-workflow-title">
+                            <div class="studio-content__section-heading">
+                                <h3 id="review-workflow-title">Review workflow</h3>
+                                <span class="studio-content__workflow-state">@FormatWorkflowState(Workflow.State)</span>
+                            </div>
+                            <p class="studio-content__workflow-help">
+                                Local foundation workflow for review decisions only. Publishing remains out of scope.
+                            </p>
+
+                            @if (Workflow.HasValidationIssues)
+                            {
+                                <section class="studio-content__validation" role="alert" aria-labelledby="workflow-validation-title">
+                                    <h4 id="workflow-validation-title">Workflow validation summary</h4>
+                                    <ul>
+                                        @foreach (var issue in Workflow.Issues)
+                                        {
+                                            <li>@issue.Message</li>
+                                        }
+                                    </ul>
+                                </section>
+                            }
+
+                            <dl class="studio-content__metadata studio-content__metadata--readonly">
+                                <div>
+                                    <dt>Current state</dt>
+                                    <dd><span class="@GetStatusClass(Workflow.LifecycleState)">@FormatLifecycle(Workflow.LifecycleState)</span></dd>
+                                </div>
+                                <div>
+                                    <dt>Available transition</dt>
+                                    <dd>@FormatWorkflowReadiness(Workflow.LifecycleState)</dd>
+                                </div>
+                            </dl>
+
+                            <div class="studio-content__workflow-actions" aria-label="Review workflow actions">
+                                @if (IsWorkflowActionAvailable(StudioWorkflowActionKind.RequestReview))
+                                {
+                                    <button type="button" @onclick="() => RunWorkflowActionAsync(StudioWorkflowActionKind.RequestReview)" disabled="@IsWorkflowProcessing" aria-label="Request review for selected draft">
+                                        Request review
+                                    </button>
+                                }
+                                @if (IsWorkflowActionAvailable(StudioWorkflowActionKind.Approve))
+                                {
+                                    <button type="button" @onclick="() => RunWorkflowActionAsync(StudioWorkflowActionKind.Approve)" disabled="@IsWorkflowProcessing" aria-label="Approve selected content">
+                                        Approve
+                                    </button>
+                                }
+                                @if (IsWorkflowActionAvailable(StudioWorkflowActionKind.Reject))
+                                {
+                                    <button type="button" class="studio-content__secondary-button" @onclick="() => RunWorkflowActionAsync(StudioWorkflowActionKind.Reject)" disabled="@IsWorkflowProcessing" aria-label="Return selected content to draft">
+                                        Return to draft
+                                    </button>
+                                }
+                                @if (StudioWorkflowActionModel.GetAvailableActions(Workflow.LifecycleState).Count == 0)
+                                {
+                                    <span>No review workflow actions are available.</span>
+                                }
+                            </div>
+
+                            <p class="studio-content__workflow-status" role="status" aria-live="polite">
+                                @Workflow.SafeMessage
+                            </p>
+                        </section>
                     </aside>
                 }
 
@@ -279,6 +342,8 @@
 
     private StudioContentEditorModel Editor = StudioContentEditorModel.Loading();
 
+    private StudioWorkflowActionModel Workflow = StudioWorkflowActionModel.Loading();
+
     private StudioContentListItem? SelectedContent => Model.SelectedContent;
 
     private IReadOnlyCollection<Guid> ApplicationIds =>
@@ -292,6 +357,9 @@
         Editor.State is StudioContentEditorState.Loading or StudioContentEditorState.Saving ||
         Editor.LifecycleState != StudioContentLifecycleState.Draft;
 
+    private bool IsWorkflowProcessing =>
+        Workflow.State == StudioWorkflowActionState.Processing;
+
     protected override async Task OnInitializedAsync()
     {
         var result = await StudioContentClient.ListAsync(
@@ -300,6 +368,7 @@
 
         Model = ToPageModel(result);
         Editor = StudioContentEditorModel.FromContent(Model.SelectedContent);
+        Workflow = StudioWorkflowActionModel.FromContent(Model.SelectedContent);
     }
 
     private static string FormatLifecycle(StudioContentLifecycleState state) =>
@@ -329,6 +398,29 @@
             StudioContentEditorState.ValidationError => "Validation required",
             StudioContentEditorState.NotAuthorized => "Not authorized",
             _ => "Unavailable"
+        };
+
+    private static string FormatWorkflowState(StudioWorkflowActionState state) =>
+        state switch
+        {
+            StudioWorkflowActionState.Loading => "Loading",
+            StudioWorkflowActionState.Ready => "Ready",
+            StudioWorkflowActionState.Processing => "Processing",
+            StudioWorkflowActionState.Succeeded => "Completed",
+            StudioWorkflowActionState.ValidationError => "Validation required",
+            StudioWorkflowActionState.NotAuthorized => "Not authorized",
+            _ => "Unavailable"
+        };
+
+    private static string FormatWorkflowReadiness(StudioContentLifecycleState state) =>
+        state switch
+        {
+            StudioContentLifecycleState.Draft => "Draft can be submitted for review.",
+            StudioContentLifecycleState.InReview => "Approve or return to draft.",
+            StudioContentLifecycleState.Approved => "Approved content has no review actions here.",
+            StudioContentLifecycleState.Published => "Published content has no review actions here.",
+            StudioContentLifecycleState.Archived => "Archived content has no review actions here.",
+            _ => "No review actions are available."
         };
 
     private static string GetStatusClass(StudioContentLifecycleState state) =>
@@ -415,10 +507,112 @@
             SelectedContentId = contentId,
             SafeMessage = StudioContentFoundationData.LocalDataNotice
         };
+        Workflow = StudioWorkflowActionModel.FromContent(Model.SelectedContent);
     }
 
     private bool HasIssue(string path) =>
         Editor.Issues.Any(issue => string.Equals(issue.Path, path, StringComparison.Ordinal));
+
+    private bool IsWorkflowActionAvailable(StudioWorkflowActionKind action) =>
+        StudioWorkflowActionModel.IsActionAvailable(Workflow.LifecycleState, action);
+
+    private async Task RunWorkflowActionAsync(StudioWorkflowActionKind action)
+    {
+        var validation = Workflow.Validate(action);
+        if (!validation.Succeeded)
+        {
+            Workflow.ApplyValidationResult(validation);
+            return;
+        }
+
+        Workflow.MarkProcessing(action);
+        var request = new StudioWorkflowActionRequest(Workflow.ContentId, Workflow.VersionId);
+        var result = action switch
+        {
+            StudioWorkflowActionKind.RequestReview => await StudioContentClient.RequestReviewAsync(
+                request,
+                CancellationToken.None),
+            StudioWorkflowActionKind.Approve => await StudioContentClient.ApproveAsync(
+                request,
+                CancellationToken.None),
+            StudioWorkflowActionKind.Reject => await StudioContentClient.RejectAsync(
+                request,
+                CancellationToken.None),
+            _ => StudioContentClientResult<StudioWorkflowActionModel>.InvalidResponse()
+        };
+
+        ApplyWorkflowResult(result);
+    }
+
+    private void ApplyWorkflowResult(StudioContentClientResult<StudioWorkflowActionModel> result)
+    {
+        switch (result.Status)
+        {
+            case StudioContentClientStatus.Success when result.Value is not null:
+                Workflow = result.Value;
+                ApplyWorkflowToModel();
+                break;
+            case StudioContentClientStatus.ValidationError when result.Value is not null:
+                Workflow = result.Value;
+                break;
+            case StudioContentClientStatus.Unauthorized:
+            case StudioContentClientStatus.Forbidden:
+                Workflow.MarkNotAuthorized(result.SafeMessage);
+                break;
+            default:
+                Workflow.MarkError(result.SafeMessage);
+                break;
+        }
+    }
+
+    private void ApplyWorkflowToModel()
+    {
+        if (Workflow.ContentId == Guid.Empty ||
+            Workflow.VersionId == Guid.Empty ||
+            Model.State != StudioContentPageState.Loaded)
+        {
+            return;
+        }
+
+        var existing = Model.Items.FirstOrDefault(item => item.Id == Workflow.ContentId);
+        if (existing is null)
+        {
+            return;
+        }
+
+        var occurredAtUtc = DateTimeOffset.UtcNow;
+        var versions = existing.Versions
+            .Select(version => version.Id == Workflow.VersionId
+                ? version with
+                {
+                    LifecycleState = Workflow.LifecycleState
+                }
+                : version)
+            .ToArray();
+
+        var updatedItem = existing with
+        {
+            LifecycleState = Workflow.LifecycleState,
+            Versions = versions,
+            History = existing.History with
+            {
+                LifecycleEventCount = existing.History.LifecycleEventCount + 1,
+                LatestSafeActivity = Workflow.SafeMessage,
+                LatestActivityAtUtc = occurredAtUtc
+            }
+        };
+
+        Model = Model with
+        {
+            Items = Model.Items
+                .Select(item => item.Id == updatedItem.Id ? updatedItem : item)
+                .ToArray(),
+            SelectedContentId = updatedItem.Id,
+            SafeMessage = StudioContentFoundationData.LocalDataNotice
+        };
+
+        Editor = StudioContentEditorModel.FromContent(Model.SelectedContent);
+    }
 
     private static StudioContentPageModel ToPageModel(
         StudioContentClientResult<StudioContentPageModel> result) =>

@@ -288,3 +288,99 @@ rg "HttpClient|Authorization|Bearer|token|header|claim|ConnectionString|Password
 ### Next recommended slice
 
 Add authenticated tenant-aware Studio write-client planning or implementation for draft create/update only, including safe token propagation and `Authoring.Manage` enforcement, while keeping workflow actions, publish UI, backend drift, migrations, appsettings changes, analytics, AI, deployment automation, and Property MTD integration separately approved.
+
+## Slice 4 - Studio review/approve workflow UI foundation
+
+### Requirement IDs covered
+
+- `FR-AUT-004` - Added a Studio review workflow foundation for lifecycle decisions.
+- `FR-AUT-006` - Represented request review, approve, and reject/return-to-draft workflow actions.
+- `FR-GOV-002` - Reused existing authoring permission keys for workflow action metadata.
+- `NFR-A11Y-1` - Added accessible workflow buttons, labels, validation summary, and live status text.
+- `NFR-SEC-1` - Kept workflow requests structural and excluded tenant IDs, tokens, headers, claims, secrets, connection strings, tax/HMRC/property data, sensitive content, and user-entered sensitive values.
+- `NFR-SEC-2` - Added safe local workflow validation and generic error/status messages.
+- `NFR-TEST-1` - Added unit coverage for workflow availability, permission metadata, local workflow client behaviour, request model tenant-safety, page workflow markup, and no-publish guardrails.
+
+### Scope delivered
+
+- Added `StudioWorkflowActionModel` with lifecycle action kinds, local action state, safe validation issues, and permission metadata.
+- Extended `IStudioContentClient` with local-only workflow methods:
+  - `RequestReviewAsync`;
+  - `ApproveAsync`;
+  - `RejectAsync`.
+- Added `StudioWorkflowActionRequest` with content and version identifiers only.
+- Kept `LocalStudioContentClient` as the only implementation.
+- Updated `/studio/content` with a compact Review workflow section in the selected-content detail panel.
+- Added lifecycle-controlled workflow buttons:
+  - Draft shows Request review;
+  - InReview shows Approve and Return to draft;
+  - Approved, Published, and Archived show no workflow action buttons.
+- Added safe workflow validation summary and live status feedback.
+- Updated selected content lifecycle state locally after successful local workflow actions.
+
+### Lifecycle rules
+
+- Draft -> InReview: request review allowed.
+- InReview -> Approved: approve allowed.
+- InReview -> Draft: reject/return-to-draft allowed.
+- Approved, Published, and Archived: no workflow actions are shown in this UI.
+
+### Permission metadata
+
+The workflow model references existing permission keys only:
+
+- Request review: `Authoring.Review`;
+- Approve: `Authoring.Approve`;
+- Reject/return-to-draft: `Authoring.Review`.
+
+No new permission keys are added.
+
+### Workflow assumptions
+
+The Slice 4 workflow UI is a Web-local foundation seam only. It does not call live authoring workflow endpoints, does not perform API token propagation, and does not accept tenant IDs from the page or request models.
+
+Successful workflow actions update the local selected content model only. They are not durable persistence and are not production workflow execution. A later approved slice must replace the local implementation with authenticated tenant-aware API integration before production workflow enablement.
+
+### Explicitly not built
+
+- Publish UI.
+- Live API integration.
+- API token propagation.
+- Backend API changes.
+- EF migrations.
+- Database schema changes.
+- Appsettings changes.
+- Deployment automation.
+- Analytics.
+- AI assistant.
+- Event Hubs.
+- ClickHouse.
+- Browser extension.
+- Property MTD integration.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+rg "HttpClient|Authorization|Bearer|token|header|claim|ConnectionString|Password|Secret|HMRC|tax|property|MarkupString|innerHTML|PublishAsync|StudioWorkflowActionKind\.Publish" src/Adopta.Web/Components/Pages/Studio/StudioContent.razor src/Adopta.Web/Studio tests/Adopta.UnitTests/StudioContentClientTests.cs tests/Adopta.UnitTests/StudioWorkflowActionTests.cs tests/Adopta.UnitTests/StudioContentPageTests.cs
+```
+
+### Known limitations
+
+- Workflow actions remain local and non-durable.
+- No live authenticated authoring workflow API calls are made.
+- No Web token propagation or API client configuration exists.
+- Workflow permission metadata is represented, but full UI authorization enforcement remains deferred.
+- Publishing remains out of scope for the Studio content page.
+
+### Next recommended slice
+
+Add authenticated tenant-aware Studio workflow-client planning or implementation for request review, approve, and reject only, including safe token propagation and `Authoring.Review` / `Authoring.Approve` enforcement, while keeping publish UI, backend drift, migrations, appsettings changes, analytics, AI, deployment automation, and Property MTD integration separately approved.
