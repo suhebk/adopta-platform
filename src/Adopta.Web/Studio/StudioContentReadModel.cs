@@ -1,3 +1,5 @@
+using Adopta.Application.Runtime;
+
 namespace Adopta.Web.Studio;
 
 public enum StudioContentLifecycleState
@@ -36,6 +38,7 @@ public sealed record StudioContentListItem(
     Guid ApplicationId,
     string ContentKey,
     string Title,
+    RuntimeContentType ContentType,
     StudioContentLifecycleState LifecycleState,
     IReadOnlyCollection<StudioContentVersionSummary> Versions,
     StudioContentHistorySummary History)

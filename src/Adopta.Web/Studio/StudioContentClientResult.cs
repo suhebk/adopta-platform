@@ -8,7 +8,8 @@ public enum StudioContentClientStatus
     NotFound = 3,
     InvalidResponse = 4,
     Unavailable = 5,
-    UnexpectedError = 6
+    UnexpectedError = 6,
+    ValidationError = 7
 }
 
 public sealed record StudioContentClientResult<T>(
@@ -38,6 +39,9 @@ public sealed record StudioContentClientResult<T>(
 
     public static StudioContentClientResult<T> UnexpectedError() =>
         Failed(StudioContentClientStatus.UnexpectedError, "Studio content could not be loaded.");
+
+    public static StudioContentClientResult<T> ValidationError(T value) =>
+        new(StudioContentClientStatus.ValidationError, value, "Studio content has validation issues.");
 
     public static StudioContentClientResult<T> Failed(
         StudioContentClientStatus status,
