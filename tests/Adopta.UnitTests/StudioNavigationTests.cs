@@ -35,6 +35,16 @@ public sealed class StudioNavigationTests
     }
 
     [Fact]
+    public void Studio_content_route_requires_authoring_read_permission()
+    {
+        var item = Assert.Single(
+            StudioNavigation.Items,
+            item => item.RoutePath == "/studio/content");
+
+        Assert.Equal(AdoptaPermissionKeys.AuthoringRead, item.RequiredPermissionKey);
+    }
+
+    [Fact]
     public void Studio_navigation_metadata_is_complete()
     {
         Assert.All(StudioNavigation.Items, item =>
