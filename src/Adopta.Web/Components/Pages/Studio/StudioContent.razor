@@ -3,11 +3,198 @@
 
 <PageTitle>Authored Content</PageTitle>
 
-<section class="studio-shell">
-    <p class="eyebrow">@StudioNavigation.FoundationShellStatus</p>
-    <h1>Authored Content</h1>
-    <p>
-        Foundation shell for authored guidance inventory. Content editor, forms,
-        builders, and runtime rendering are intentionally out of scope.
-    </p>
+<section class="studio-content" aria-labelledby="studio-content-title">
+    <header class="studio-content__header">
+        <div>
+            <p class="studio-content__eyebrow">@StudioNavigation.FoundationShellStatus</p>
+            <h1 id="studio-content-title">Authored Content</h1>
+            <p class="studio-content__intro">
+                Read-only inventory for authored runtime guidance. This view uses
+                local foundation data until authenticated tenant-aware API integration
+                is approved.
+            </p>
+        </div>
+        <div class="studio-content__notice" role="note">
+            @Model.SafeMessage
+        </div>
+    </header>
+
+    @switch (Model.State)
+    {
+        case StudioContentPageState.Loading:
+            <section class="studio-content__state" aria-live="polite">
+                <h2>Loading content</h2>
+                <p>Authored content metadata is loading.</p>
+            </section>
+            break;
+        case StudioContentPageState.Empty:
+            <section class="studio-content__state">
+                <h2>No content yet</h2>
+                <p>No authored content metadata is available for this Studio view.</p>
+            </section>
+            break;
+        case StudioContentPageState.Error:
+            <section class="studio-content__state studio-content__state--error" role="alert">
+                <h2>Content unavailable</h2>
+                <p>Authored content could not be loaded. Try again later.</p>
+            </section>
+            break;
+        case StudioContentPageState.NotAuthorized:
+            <section class="studio-content__state studio-content__state--warning" role="alert">
+                <h2>Not authorized</h2>
+                <p>You do not have permission to view authored content.</p>
+            </section>
+            break;
+        case StudioContentPageState.Loaded:
+            <section class="studio-content__summary" aria-label="Content lifecycle summary">
+                @foreach (var state in LifecycleStates)
+                {
+                    <article class="studio-content__summary-item">
+                        <span class="@GetStatusClass(state)">@FormatLifecycle(state)</span>
+                        <strong>@Model.CountByState(state)</strong>
+                    </article>
+                }
+            </section>
+
+            <div class="studio-content__workspace">
+                <section class="studio-content__list" aria-labelledby="content-list-title">
+                    <div class="studio-content__section-heading">
+                        <h2 id="content-list-title">Content inventory</h2>
+                        <p>@Model.Items.Count authored items</p>
+                    </div>
+
+                    <div class="studio-content__table-wrap">
+                        <table class="studio-content__table">
+                            <caption>Authored content metadata</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Title</th>
+                                    <th scope="col">Lifecycle</th>
+                                    <th scope="col">Version</th>
+                                    <th scope="col">History</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Items)
+                                {
+                                    <tr class="@(item.Id == SelectedContent?.Id ? "is-selected" : null)">
+                                        <th scope="row">
+                                            <a href="@($"#content-{item.Id}")" aria-label="@($"View {item.Title} details")">
+                                                @item.Title
+                                            </a>
+                                            <span>@item.ContentKey</span>
+                                        </th>
+                                        <td><span class="@GetStatusClass(item.LifecycleState)">@FormatLifecycle(item.LifecycleState)</span></td>
+                                        <td>@(item.CurrentVersion?.Version ?? "Unavailable")</td>
+                                        <td>@item.History.LatestSafeActivity</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                @if (SelectedContent is not null)
+                {
+                    <aside class="studio-content__detail" id="@($"content-{SelectedContent.Id}")" aria-labelledby="content-detail-title">
+                        <div class="studio-content__section-heading">
+                            <h2 id="content-detail-title">@SelectedContent.Title</h2>
+                            <span class="@GetStatusClass(SelectedContent.LifecycleState)">
+                                @FormatLifecycle(SelectedContent.LifecycleState)
+                            </span>
+                        </div>
+
+                        <dl class="studio-content__metadata">
+                            <div>
+                                <dt>Content key</dt>
+                                <dd>@SelectedContent.ContentKey</dd>
+                            </div>
+                            <div>
+                                <dt>Application ID</dt>
+                                <dd>@SelectedContent.ApplicationId</dd>
+                            </div>
+                            <div>
+                                <dt>Content ID</dt>
+                                <dd>@SelectedContent.Id</dd>
+                            </div>
+                        </dl>
+
+                        <section aria-labelledby="version-metadata-title">
+                            <h3 id="version-metadata-title">Version metadata</h3>
+                            <div class="studio-content__version-list">
+                                @foreach (var version in SelectedContent.Versions)
+                                {
+                                    <article class="studio-content__version">
+                                        <strong>@version.Version</strong>
+                                        <span class="@GetStatusClass(version.LifecycleState)">
+                                            @FormatLifecycle(version.LifecycleState)
+                                        </span>
+                                        <time datetime="@version.CreatedAtUtc.ToString("O")">
+                                            @version.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm 'UTC'")
+                                        </time>
+                                    </article>
+                                }
+                            </div>
+                        </section>
+
+                        <section aria-labelledby="history-summary-title">
+                            <h3 id="history-summary-title">Audit and history summary</h3>
+                            <dl class="studio-content__metadata">
+                                <div>
+                                    <dt>Latest activity</dt>
+                                    <dd>@SelectedContent.History.LatestSafeActivity</dd>
+                                </div>
+                                <div>
+                                    <dt>Lifecycle events</dt>
+                                    <dd>@SelectedContent.History.LifecycleEventCount</dd>
+                                </div>
+                                <div>
+                                    <dt>Publishing events</dt>
+                                    <dd>@SelectedContent.History.PublishingEventCount</dd>
+                                </div>
+                                <div>
+                                    <dt>Last updated</dt>
+                                    <dd>
+                                        @if (SelectedContent.History.LatestActivityAtUtc is { } latest)
+                                        {
+                                            <time datetime="@latest.ToString("O")">@latest.ToString("yyyy-MM-dd HH:mm 'UTC'")</time>
+                                        }
+                                        else
+                                        {
+                                            <span>Unavailable</span>
+                                        }
+                                    </dd>
+                                </div>
+                            </dl>
+                        </section>
+                    </aside>
+                }
+            </div>
+            break;
+    }
 </section>
+
+@code {
+    private static readonly StudioContentLifecycleState[] LifecycleStates =
+    [
+        StudioContentLifecycleState.Draft,
+        StudioContentLifecycleState.InReview,
+        StudioContentLifecycleState.Approved,
+        StudioContentLifecycleState.Published,
+        StudioContentLifecycleState.Archived
+    ];
+
+    private readonly StudioContentPageModel Model = StudioContentFoundationData.Loaded();
+
+    private StudioContentListItem? SelectedContent => Model.SelectedContent;
+
+    private static string FormatLifecycle(StudioContentLifecycleState state) =>
+        state switch
+        {
+            StudioContentLifecycleState.InReview => "In review",
+            _ => state.ToString()
+        };
+
+    private static string GetStatusClass(StudioContentLifecycleState state) =>
+        $"studio-content__status studio-content__status--{state.ToString().ToLowerInvariant()}";
+}
