@@ -183,6 +183,23 @@ Before enabling read-only Studio API integration in an environment:
 - Confirm logs and UI errors remain generic and non-sensitive.
 - Confirm write/workflow/publish API activation remains separately approved.
 
+## Controlled Environment Validation
+
+Environment validation is documented in `docs/adopta/studio/STUDIO-READ-API-ENVIRONMENT-VALIDATION.md`.
+
+The validation process uses secure external configuration in real environments and in-memory configuration in automated tests. It must not commit real values to repository appsettings files.
+
+Controlled environment validation must prove:
+
+- local/default configuration remains on `LocalStudioContentClient`;
+- invalid external-style configuration fails closed to `LocalStudioContentClient`;
+- valid external-style configuration can resolve the read-only API client;
+- preflight readiness does not expose configured values;
+- live write/workflow/publish operations remain unavailable;
+- Web request/page models do not supply tenant IDs;
+- `X-Adopta-Tenant-Id` is not used by Web production code;
+- `X-Adopta-Test-*` is not used as a production shortcut.
+
 ## Sprint 9 Closeout Position
 
 Sprint 9 closes with a controlled, disabled-by-default read API activation path. The platform is ready for a future environment-level validation of read-only Studio API activation, but no live activation values are committed and no write/workflow/publish API integration is enabled.
