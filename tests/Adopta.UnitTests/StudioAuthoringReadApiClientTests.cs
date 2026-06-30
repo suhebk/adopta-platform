@@ -30,6 +30,7 @@ public sealed class StudioAuthoringReadApiClientTests
         Assert.False(item.HasKnownContentType);
         Assert.Equal("/authoring/content", capturedRequest?.RequestUri?.AbsolutePath);
         AssertNoTenantInput(capturedRequest);
+        Assert.DoesNotContain(capturedRequest!.Headers, header => header.Key.StartsWith("X-Adopta-Test-", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -196,6 +197,7 @@ public sealed class StudioAuthoringReadApiClientTests
         Assert.NotNull(request);
         Assert.DoesNotContain("tenant", request.RequestUri?.ToString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(request.Headers, header => header.Key.Contains("Tenant", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(request.Headers, header => header.Key.StartsWith("X-Adopta-Test-", StringComparison.OrdinalIgnoreCase));
     }
 
     private static void AssertSafeMessage(string message)

@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddStudioApiBoundary(builder.Configuration);
 builder.Services.AddScoped<IStudioContentClient, LocalStudioContentClient>();
 
 var app = builder.Build();
