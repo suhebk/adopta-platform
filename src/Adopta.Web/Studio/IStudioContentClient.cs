@@ -17,4 +17,16 @@ public interface IStudioContentClient
     Task<StudioContentClientResult<StudioContentEditorModel>> UpdateDraftAsync(
         StudioContentUpdateDraftRequest request,
         CancellationToken cancellationToken);
+
+    Task<StudioContentClientResult<StudioWorkflowActionModel>> RequestReviewAsync(
+        StudioWorkflowActionRequest request,
+        CancellationToken cancellationToken);
+
+    Task<StudioContentClientResult<StudioWorkflowActionModel>> ApproveAsync(
+        StudioWorkflowActionRequest request,
+        CancellationToken cancellationToken);
+
+    Task<StudioContentClientResult<StudioWorkflowActionModel>> RejectAsync(
+        StudioWorkflowActionRequest request,
+        CancellationToken cancellationToken);
 }

@@ -130,6 +130,83 @@ public sealed class StudioContentClientTests
     }
 
     [Fact]
+    public async Task Local_client_request_review_succeeds_for_draft()
+    {
+        var client = new LocalStudioContentClient();
+        var draft = StudioContentFoundationData.Loaded()
+            .Items
+            .First(item => item.LifecycleState == StudioContentLifecycleState.Draft);
+
+        var result = await client.RequestReviewAsync(
+            new StudioWorkflowActionRequest(draft.Id, draft.CurrentVersion?.Id ?? Guid.Empty),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Value);
+        Assert.Equal(StudioWorkflowActionState.Succeeded, result.Value.State);
+        Assert.Equal(StudioContentLifecycleState.InReview, result.Value.LifecycleState);
+        Assert.Equal(StudioWorkflowActionKind.RequestReview, result.Value.LastAction);
+    }
+
+    [Fact]
+    public async Task Local_client_approve_succeeds_for_in_review()
+    {
+        var client = new LocalStudioContentClient();
+        var inReview = StudioContentFoundationData.Loaded()
+            .Items
+            .First(item => item.LifecycleState == StudioContentLifecycleState.InReview);
+
+        var result = await client.ApproveAsync(
+            new StudioWorkflowActionRequest(inReview.Id, inReview.CurrentVersion?.Id ?? Guid.Empty),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Value);
+        Assert.Equal(StudioWorkflowActionState.Succeeded, result.Value.State);
+        Assert.Equal(StudioContentLifecycleState.Approved, result.Value.LifecycleState);
+        Assert.Equal(StudioWorkflowActionKind.Approve, result.Value.LastAction);
+    }
+
+    [Fact]
+    public async Task Local_client_reject_succeeds_for_in_review()
+    {
+        var client = new LocalStudioContentClient();
+        var inReview = StudioContentFoundationData.Loaded()
+            .Items
+            .First(item => item.LifecycleState == StudioContentLifecycleState.InReview);
+
+        var result = await client.RejectAsync(
+            new StudioWorkflowActionRequest(inReview.Id, inReview.CurrentVersion?.Id ?? Guid.Empty),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Value);
+        Assert.Equal(StudioWorkflowActionState.Succeeded, result.Value.State);
+        Assert.Equal(StudioContentLifecycleState.Draft, result.Value.LifecycleState);
+        Assert.Equal(StudioWorkflowActionKind.Reject, result.Value.LastAction);
+    }
+
+    [Fact]
+    public async Task Local_client_invalid_workflow_transition_returns_safe_validation_error()
+    {
+        var client = new LocalStudioContentClient();
+        var approved = StudioContentFoundationData.Loaded()
+            .Items
+            .First(item => item.LifecycleState == StudioContentLifecycleState.Approved);
+
+        var result = await client.ApproveAsync(
+            new StudioWorkflowActionRequest(approved.Id, approved.CurrentVersion?.Id ?? Guid.Empty),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(StudioContentClientStatus.ValidationError, result.Status);
+        Assert.NotNull(result.Value);
+        Assert.Equal(StudioWorkflowActionState.ValidationError, result.Value.State);
+        Assert.Contains(result.Value.Issues, issue => issue.Code == "invalid_lifecycle_transition");
+        AssertSafeMessage(result.SafeMessage);
+    }
+
+    [Fact]
     public async Task Local_client_rejects_empty_content_id_as_invalid_response()
     {
         var client = new LocalStudioContentClient();
@@ -153,7 +230,8 @@ public sealed class StudioContentClientTests
             ToTuple(StudioContentClientResult<StudioContentPageModel>.InvalidResponse()),
             ToTuple(StudioContentClientResult<StudioContentPageModel>.Unavailable()),
             ToTuple(StudioContentClientResult<StudioContentPageModel>.UnexpectedError()),
-            ToTuple(StudioContentClientResult<StudioContentEditorModel>.ValidationError(new StudioContentEditorModel()))
+            ToTuple(StudioContentClientResult<StudioContentEditorModel>.ValidationError(new StudioContentEditorModel())),
+            ToTuple(StudioContentClientResult<StudioWorkflowActionModel>.ValidationError(new StudioWorkflowActionModel()))
         };
 
         Assert.All(results, result =>
@@ -176,7 +254,8 @@ public sealed class StudioContentClientTests
             typeof(StudioContentListRequest),
             typeof(StudioContentGetByIdRequest),
             typeof(StudioContentCreateDraftRequest),
-            typeof(StudioContentUpdateDraftRequest)
+            typeof(StudioContentUpdateDraftRequest),
+            typeof(StudioWorkflowActionRequest)
         };
 
         Assert.All(requestTypes, requestType =>
