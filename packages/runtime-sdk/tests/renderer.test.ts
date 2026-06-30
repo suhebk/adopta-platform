@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   Renderer,
   type ContentBundle,
-  type ContentItem
+  type ContentItem,
+  type WalkthroughStep
 } from "../src";
 
 describe("runtime renderer foundation", () => {
@@ -100,6 +101,66 @@ describe("runtime renderer foundation", () => {
     expect(findRendererNodes(dom.body)).toHaveLength(0);
   });
 
+  it("renders rich walkthrough content from the first step", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richWalkthroughItem()]));
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.mount.renderedItemCount).toBe(1);
+      expect(result.mount.skippedItemCount).toBe(0);
+    }
+
+    const walkthrough = findByAttribute(dom.body, "data-adopta-renderer", "walkthrough");
+    expect(walkthrough).toBeDefined();
+    expect(walkthrough?.getAttribute("role")).toBe("region");
+    expect(walkthrough?.getAttribute("aria-label")).toBe("Setup walkthrough");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-step-title")?.textContent)
+      .toBe("Open setup");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-step-body")?.textContent)
+      .toBe("Open the setup area.");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-progress")?.textContent)
+      .toBe("Step 1 of 2");
+  });
+
+  it("navigates walkthrough steps with correct control states", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richWalkthroughItem()]));
+
+    expect(result.ok).toBe(true);
+
+    const previous = findByAttribute(dom.body, "aria-label", "Previous walkthrough step");
+    const next = findByAttribute(dom.body, "aria-label", "Next walkthrough step");
+    expect(previous?.getAttribute("aria-disabled")).toBe("true");
+    expect(previous?.getAttribute("data-adopta-control-state")).toBe("disabled");
+    expect(next?.getAttribute("aria-disabled")).toBe("false");
+    expect(next?.getAttribute("data-adopta-control-state")).toBe("enabled");
+
+    next?.dispatch("click", {});
+
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-step-title")?.textContent)
+      .toBe("Confirm setup");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-step-body")?.textContent)
+      .toBe("");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-step-body")?.getAttribute("aria-hidden"))
+      .toBe("true");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-progress")?.textContent)
+      .toBe("Step 2 of 2");
+    expect(previous?.getAttribute("aria-disabled")).toBe("false");
+    expect(next?.getAttribute("aria-disabled")).toBe("true");
+
+    previous?.dispatch("click", {});
+
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-step-title")?.textContent)
+      .toBe("Open setup");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-progress")?.textContent)
+      .toBe("Step 1 of 2");
+    expect(previous?.getAttribute("aria-disabled")).toBe("true");
+    expect(next?.getAttribute("aria-disabled")).toBe("false");
+  });
+
   it("fails safely when a tooltip anchor is missing", () => {
     const dom = new FakeDocument();
     const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
@@ -127,7 +188,7 @@ describe("runtime renderer foundation", () => {
     expect(findRendererNodes(dom.body)).toHaveLength(0);
   });
 
-  it("skips unsupported walkthrough content safely", () => {
+  it("keeps placeholder-safe walkthrough content valid but skipped", () => {
     const dom = new FakeDocument();
     const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
       .render(bundle([walkthroughItem()]));
@@ -144,6 +205,47 @@ describe("runtime renderer foundation", () => {
         })
       ]);
     }
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
+  it("fails safely when a walkthrough step anchor is missing", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richWalkthroughItem([{
+        id: "missing-anchor",
+        title: "Missing anchor step",
+        anchor: {
+          strategy: "data-adopt-id",
+          value: "walkthrough.missing"
+        }
+      }])]));
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "missing_anchor"
+    });
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
+  it("fails safely when a walkthrough step anchor is duplicated", () => {
+    const dom = new FakeDocument();
+    dom.body.appendChild(dom.createHostElement("button", "walkthrough.duplicate"));
+    dom.body.appendChild(dom.createHostElement("button", "walkthrough.duplicate"));
+
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richWalkthroughItem([{
+        id: "duplicate-anchor",
+        title: "Duplicate anchor step",
+        anchor: {
+          strategy: "data-adopt-id",
+          value: "walkthrough.duplicate"
+        }
+      }])]));
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "duplicate_anchor"
+    });
     expect(findRendererNodes(dom.body)).toHaveLength(0);
   });
 
@@ -202,6 +304,25 @@ describe("runtime renderer foundation", () => {
     expect(dom.innerMarkupWriteCount).toBe(0);
   });
 
+  it("renders walkthrough content as text instead of raw markup", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richWalkthroughItem([{
+        id: "markup-step",
+        title: "<strong>Do not parse me</strong>",
+        body: "<img src=x onerror=alert(1)>"
+      }])]));
+
+    expect(result.ok).toBe(true);
+    const renderedTitle = findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-step-title");
+    const renderedBody = findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-step-body");
+    expect(renderedTitle?.textContent).toBe("<strong>Do not parse me</strong>");
+    expect(renderedBody?.textContent).toBe("<img src=x onerror=alert(1)>");
+    expect(renderedTitle?.children).toHaveLength(0);
+    expect(renderedBody?.children).toHaveLength(0);
+    expect(dom.innerMarkupWriteCount).toBe(0);
+  });
+
   it("does not read form values, field values, or host DOM text", () => {
     const dom = new FakeDocument();
     const sensitiveAnchor = dom.createHostElement("input", "billing.submit", true);
@@ -221,6 +342,25 @@ describe("runtime renderer foundation", () => {
 
     const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
       .render(bundle([richChecklistItem()]));
+
+    expect(result.ok).toBe(true);
+    expect(sensitiveHostElement.sensitiveReadCount).toBe(0);
+  });
+
+  it("does not read form values, field values, or host DOM text while rendering walkthrough", () => {
+    const dom = new FakeDocument();
+    const sensitiveHostElement = dom.createHostElement("input", "walkthrough.sensitive", true);
+    dom.body.appendChild(sensitiveHostElement);
+
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richWalkthroughItem([{
+        id: "sensitive-anchor",
+        title: "Anchored step",
+        anchor: {
+          strategy: "data-adopt-id",
+          value: "walkthrough.sensitive"
+        }
+      }])]));
 
     expect(result.ok).toBe(true);
     expect(sensitiveHostElement.sensitiveReadCount).toBe(0);
@@ -274,6 +414,38 @@ describe("runtime renderer foundation", () => {
     expect(dom.listenerCount("keydown")).toBe(0);
   });
 
+  it("dismisses walkthrough nodes on Escape and removes listener", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richWalkthroughItem()]));
+
+    expect(result.ok).toBe(true);
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough")).toBeDefined();
+    expect(dom.listenerCount("keydown")).toBe(1);
+
+    dom.dispatch("keydown", { key: "Escape" });
+
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+
+  it("dismisses walkthrough nodes from the SDK-owned dismiss control", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richWalkthroughItem()]));
+
+    expect(result.ok).toBe(true);
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough")).toBeDefined();
+
+    const dismiss = findByAttribute(dom.body, "aria-label", "Dismiss walkthrough guidance");
+    expect(dismiss).toBeDefined();
+
+    dismiss?.dispatch("click", {});
+
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+
   it("dismisses rendered nodes from the SDK-owned dismiss control", () => {
     const dom = new FakeDocument();
     dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
@@ -316,6 +488,25 @@ describe("runtime renderer foundation", () => {
     const dom = new FakeDocument();
     const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
       .render(bundle([richChecklistItem()]));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(findRendererNodes(dom.body).length).toBeGreaterThan(0);
+    expect(dom.listenerCount("keydown")).toBe(1);
+
+    result.mount.unmount();
+
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+
+  it("unmount removes walkthrough nodes and listeners", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([richWalkthroughItem()]));
 
     expect(result.ok).toBe(true);
     if (!result.ok) {
@@ -420,6 +611,28 @@ function walkthroughItem(): ContentItem {
     type: "walkthrough",
     version: "1.0.0",
     title: "Walkthrough placeholder"
+  };
+}
+
+function richWalkthroughItem(steps: readonly WalkthroughStep[] = [
+  {
+    id: "open-setup",
+    title: "Open setup",
+    body: "Open the setup area."
+  },
+  {
+    id: "confirm-setup",
+    title: "Confirm setup"
+  }
+]): ContentItem {
+  return {
+    id: "walkthrough-1",
+    type: "walkthrough",
+    version: "1.0.0",
+    title: "Setup walkthrough",
+    walkthrough: {
+      steps
+    }
   };
 }
 
