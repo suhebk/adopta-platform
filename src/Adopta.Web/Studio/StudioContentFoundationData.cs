@@ -1,3 +1,5 @@
+using Adopta.Application.Runtime;
+
 namespace Adopta.Web.Studio;
 
 public static class StudioContentFoundationData
@@ -27,6 +29,7 @@ public static class StudioContentFoundationData
                 "30000000-0000-0000-0000-000000000001",
                 "welcome.tooltip",
                 "Welcome tooltip",
+                RuntimeContentType.Tooltip,
                 StudioContentLifecycleState.Draft,
                 "0.1.0",
                 1,
@@ -39,6 +42,7 @@ public static class StudioContentFoundationData
                 "30000000-0000-0000-0000-000000000002",
                 "setup.review.walkthrough",
                 "Setup walkthrough",
+                RuntimeContentType.Walkthrough,
                 StudioContentLifecycleState.InReview,
                 "0.3.0",
                 3,
@@ -51,6 +55,7 @@ public static class StudioContentFoundationData
                 "30000000-0000-0000-0000-000000000003",
                 "release.checklist",
                 "Release readiness checklist",
+                RuntimeContentType.Checklist,
                 StudioContentLifecycleState.Approved,
                 "1.0.0",
                 4,
@@ -63,6 +68,7 @@ public static class StudioContentFoundationData
                 "30000000-0000-0000-0000-000000000004",
                 "navigation.callout",
                 "Navigation callout",
+                RuntimeContentType.Callout,
                 StudioContentLifecycleState.Published,
                 "1.2.0",
                 6,
@@ -75,6 +81,7 @@ public static class StudioContentFoundationData
                 "30000000-0000-0000-0000-000000000005",
                 "legacy.banner",
                 "Legacy banner",
+                RuntimeContentType.Callout,
                 StudioContentLifecycleState.Archived,
                 "0.9.0",
                 5,
@@ -96,6 +103,7 @@ public static class StudioContentFoundationData
         string versionId,
         string contentKey,
         string title,
+        RuntimeContentType contentType,
         StudioContentLifecycleState lifecycleState,
         string version,
         int lifecycleEventCount,
@@ -113,6 +121,7 @@ public static class StudioContentFoundationData
             Guid.Parse(applicationId),
             contentKey,
             title,
+            contentType,
             lifecycleState,
             [
                 new StudioContentVersionSummary(

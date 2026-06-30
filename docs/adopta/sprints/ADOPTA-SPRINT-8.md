@@ -188,3 +188,103 @@ rg "HttpClient|Authorization|Bearer|token|header|claim|ConnectionString|Password
 ### Next recommended slice
 
 Add authenticated tenant-aware HTTP/API client implementation planning for read-only Studio content retrieval, including token propagation and safe configuration seams, while keeping action UI, backend behavior changes, migrations, appsettings changes, analytics, AI, deployment automation, and Property MTD integration separately approved.
+
+## Slice 3 - Studio create/edit guidance UI foundation
+
+### Requirement IDs covered
+
+- `FR-AUT-001` - Added a metadata-only create/edit foundation for authored guidance drafts.
+- `FR-AUT-004` - Preserved lifecycle state and version metadata visibility in the editor context.
+- `FR-GOV-002` - Kept Studio content navigation mapped through the existing `Authoring.Read` metadata and avoided new permission keys.
+- `NFR-A11Y-1` - Added labelled form fields, validation summary, live status text, and semantic editor sections.
+- `NFR-SEC-1` - Kept editor metadata safe and excluded content body, tokens, headers, claims, secrets, connection strings, tax/HMRC/property data, and sensitive values.
+- `NFR-SEC-2` - Added safe validation and client results for draft metadata errors without echoing unsafe input.
+- `NFR-TEST-1` - Added unit coverage for editor validation, local draft create/update client behaviour, request model tenant-safety, page/client boundary usage, and workflow action guardrails.
+
+### Scope delivered
+
+- Added `StudioContentEditorModel` with editor state, validation result, and typed validation issues.
+- Extended `IStudioContentClient` with local-only draft create and update methods.
+- Added create/update request models that do not accept tenant IDs.
+- Kept `LocalStudioContentClient` as the only implementation.
+- Updated `/studio/content` with a compact guidance metadata editor panel.
+- Added a single `Save draft` action for local draft metadata persistence.
+- Added editable metadata fields for title, content key, content type, and local application selector placeholder.
+- Added read-only lifecycle state and version metadata display.
+- Added validation states for loading, saving, saved, validation error, not authorized, and generic error.
+- Preserved the content inventory, selected detail panel, version metadata, and safe audit/history summary.
+
+### Editor assumptions
+
+The Slice 3 editor is a Web-local foundation seam only. It does not call the live authoring API, does not perform API token propagation, and does not accept tenant IDs from the page or client request models.
+
+The local client validates metadata and returns safe typed results. Successful create/update responses are local only and are not durable persistence. A later approved slice must replace the local implementation with authenticated tenant-aware API integration before production write enablement.
+
+Content type choices use the existing runtime content vocabulary:
+
+- Tooltip;
+- Callout;
+- Checklist;
+- Walkthrough.
+
+### Validation assumptions
+
+Validation covers:
+
+- required title;
+- required content key;
+- required content type;
+- required local application selection;
+- safe structural content key format;
+- sensitive marker rejection.
+
+Validation messages are generic and do not echo unsafe input values.
+
+### Explicitly not built
+
+- Review action UI.
+- Approve action UI.
+- Reject action UI.
+- Publish action UI.
+- Content body editing.
+- Rich text editing.
+- Live API integration.
+- API token propagation.
+- Backend API changes.
+- EF migrations.
+- Database schema changes.
+- Appsettings changes.
+- Deployment automation.
+- Analytics.
+- AI assistant.
+- Event Hubs.
+- ClickHouse.
+- Browser extension.
+- Property MTD integration.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+rg "HttpClient|Authorization|Bearer|token|header|claim|ConnectionString|Password|Secret|HMRC|tax|property|MarkupString|innerHTML" src/Adopta.Web/Components/Pages/Studio/StudioContent.razor src/Adopta.Web/Studio tests/Adopta.UnitTests/StudioContentClientTests.cs tests/Adopta.UnitTests/StudioContentEditorTests.cs tests/Adopta.UnitTests/StudioContentPageTests.cs
+```
+
+### Known limitations
+
+- Draft create/update remains local and non-durable.
+- No live authenticated authoring API calls are made.
+- No Web token propagation or API client configuration exists.
+- The editor is metadata-only and does not edit content body.
+- Review, approval, rejection, and publish workflows remain outside the Studio UI.
+
+### Next recommended slice
+
+Add authenticated tenant-aware Studio write-client planning or implementation for draft create/update only, including safe token propagation and `Authoring.Manage` enforcement, while keeping workflow actions, publish UI, backend drift, migrations, appsettings changes, analytics, AI, deployment automation, and Property MTD integration separately approved.

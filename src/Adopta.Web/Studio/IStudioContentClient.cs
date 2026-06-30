@@ -9,4 +9,12 @@ public interface IStudioContentClient
     Task<StudioContentClientResult<StudioContentListItem>> GetByIdAsync(
         StudioContentGetByIdRequest request,
         CancellationToken cancellationToken);
+
+    Task<StudioContentClientResult<StudioContentEditorModel>> CreateDraftAsync(
+        StudioContentCreateDraftRequest request,
+        CancellationToken cancellationToken);
+
+    Task<StudioContentClientResult<StudioContentEditorModel>> UpdateDraftAsync(
+        StudioContentUpdateDraftRequest request,
+        CancellationToken cancellationToken);
 }

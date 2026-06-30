@@ -1,4 +1,6 @@
 @page "/studio/content"
+@rendermode InteractiveServer
+@using Adopta.Application.Runtime
 @using Adopta.Web.Studio
 @inject IStudioContentClient StudioContentClient
 
@@ -10,9 +12,9 @@
             <p class="studio-content__eyebrow">@StudioNavigation.FoundationShellStatus</p>
             <h1 id="studio-content-title">Authored Content</h1>
             <p class="studio-content__intro">
-                Read-only inventory for authored runtime guidance. This view uses
-                local foundation data until authenticated tenant-aware API integration
-                is approved.
+                Authored runtime guidance inventory with a metadata-only draft editor.
+                This view uses local foundation data until authenticated tenant-aware
+                API integration is approved.
             </p>
         </div>
         <div class="studio-content__notice" role="note">
@@ -70,6 +72,7 @@
                             <thead>
                                 <tr>
                                     <th scope="col">Title</th>
+                                    <th scope="col">Type</th>
                                     <th scope="col">Lifecycle</th>
                                     <th scope="col">Version</th>
                                     <th scope="col">History</th>
@@ -85,6 +88,7 @@
                                             </a>
                                             <span>@item.ContentKey</span>
                                         </th>
+                                        <td>@FormatContentType(item.ContentType)</td>
                                         <td><span class="@GetStatusClass(item.LifecycleState)">@FormatLifecycle(item.LifecycleState)</span></td>
                                         <td>@(item.CurrentVersion?.Version ?? "Unavailable")</td>
                                         <td>@item.History.LatestSafeActivity</td>
@@ -170,6 +174,84 @@
                         </section>
                     </aside>
                 }
+
+                <section class="studio-content__editor" aria-labelledby="guidance-editor-title">
+                    <div class="studio-content__section-heading">
+                        <h2 id="guidance-editor-title">Guidance metadata editor</h2>
+                        <span class="studio-content__editor-state">@FormatEditorState(Editor.State)</span>
+                    </div>
+                    <p class="studio-content__editor-help">
+                        Foundation editor for draft metadata only. Content body, review, approval, and publishing actions are out of scope.
+                    </p>
+
+                    <form class="studio-content__editor-form" aria-describedby="guidance-editor-help" @onsubmit="SaveDraftAsync" @onsubmit:preventDefault="true" novalidate>
+                        <p id="guidance-editor-help" class="studio-content__field-help">
+                            Save stores draft metadata through the local Studio content client seam only.
+                        </p>
+
+                        @if (Editor.HasValidationIssues)
+                        {
+                            <section class="studio-content__validation" role="alert" aria-labelledby="guidance-validation-title">
+                                <h3 id="guidance-validation-title">Validation summary</h3>
+                                <ul>
+                                    @foreach (var issue in Editor.Issues)
+                                    {
+                                        <li>@issue.Message</li>
+                                    }
+                                </ul>
+                            </section>
+                        }
+
+                        <div class="studio-content__field">
+                            <label for="guidance-title">Title</label>
+                            <input id="guidance-title" name="title" type="text" @bind="Editor.Title" aria-required="true" aria-invalid='@HasIssue("title")' />
+                        </div>
+
+                        <div class="studio-content__field">
+                            <label for="guidance-content-key">Content key</label>
+                            <input id="guidance-content-key" name="content-key" type="text" @bind="Editor.ContentKey" aria-required="true" aria-invalid='@HasIssue("contentKey")' />
+                            <span class="studio-content__field-help">Use lowercase structural keys such as welcome.tooltip or release-checklist.</span>
+                        </div>
+
+                        <div class="studio-content__field">
+                            <label for="guidance-content-type">Content type</label>
+                            <select id="guidance-content-type" name="content-type" @bind="Editor.ContentType" aria-required="true" aria-invalid='@HasIssue("contentType")'>
+                                <option value="">Select content type</option>
+                                @foreach (var contentType in ContentTypes)
+                                {
+                                    <option value="@contentType">@FormatContentType(contentType)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="studio-content__field">
+                            <label for="guidance-application">Application</label>
+                            <select id="guidance-application" name="application-id" @bind="Editor.ApplicationId" aria-required="true" aria-invalid='@HasIssue("applicationId")'>
+                                @foreach (var applicationId in ApplicationIds)
+                                {
+                                    <option value="@applicationId">@applicationId</option>
+                                }
+                            </select>
+                            <span class="studio-content__field-help">Local application selector placeholder.</span>
+                        </div>
+
+                        <dl class="studio-content__metadata studio-content__metadata--readonly">
+                            <div>
+                                <dt>Lifecycle state</dt>
+                                <dd><span class="@GetStatusClass(Editor.LifecycleState)">@FormatLifecycle(Editor.LifecycleState)</span></dd>
+                            </div>
+                            <div>
+                                <dt>Version</dt>
+                                <dd>@Editor.Version</dd>
+                            </div>
+                        </dl>
+
+                        <div class="studio-content__editor-actions">
+                            <button type="submit" disabled="@IsSaveDisabled">Save draft</button>
+                            <span role="status" aria-live="polite">@Editor.SafeMessage</span>
+                        </div>
+                    </form>
+                </section>
             </div>
             break;
     }
@@ -185,9 +267,30 @@
         StudioContentLifecycleState.Archived
     ];
 
+    private static readonly RuntimeContentType[] ContentTypes =
+    [
+        RuntimeContentType.Tooltip,
+        RuntimeContentType.Callout,
+        RuntimeContentType.Checklist,
+        RuntimeContentType.Walkthrough
+    ];
+
     private StudioContentPageModel Model = StudioContentFoundationData.Loading();
 
+    private StudioContentEditorModel Editor = StudioContentEditorModel.Loading();
+
     private StudioContentListItem? SelectedContent => Model.SelectedContent;
+
+    private IReadOnlyCollection<Guid> ApplicationIds =>
+        Model.Items
+            .Select(item => item.ApplicationId)
+            .Distinct()
+            .OrderBy(applicationId => applicationId)
+            .ToArray();
+
+    private bool IsSaveDisabled =>
+        Editor.State is StudioContentEditorState.Loading or StudioContentEditorState.Saving ||
+        Editor.LifecycleState != StudioContentLifecycleState.Draft;
 
     protected override async Task OnInitializedAsync()
     {
@@ -196,6 +299,7 @@
             CancellationToken.None);
 
         Model = ToPageModel(result);
+        Editor = StudioContentEditorModel.FromContent(Model.SelectedContent);
     }
 
     private static string FormatLifecycle(StudioContentLifecycleState state) =>
@@ -205,8 +309,116 @@
             _ => state.ToString()
         };
 
+    private static string FormatContentType(RuntimeContentType contentType) =>
+        contentType switch
+        {
+            RuntimeContentType.Tooltip => "Tooltip",
+            RuntimeContentType.Callout => "Callout",
+            RuntimeContentType.Checklist => "Checklist",
+            RuntimeContentType.Walkthrough => "Walkthrough",
+            _ => "Unsupported"
+        };
+
+    private static string FormatEditorState(StudioContentEditorState state) =>
+        state switch
+        {
+            StudioContentEditorState.Loading => "Loading",
+            StudioContentEditorState.Editing => "Editing draft",
+            StudioContentEditorState.Saving => "Saving",
+            StudioContentEditorState.Saved => "Saved",
+            StudioContentEditorState.ValidationError => "Validation required",
+            StudioContentEditorState.NotAuthorized => "Not authorized",
+            _ => "Unavailable"
+        };
+
     private static string GetStatusClass(StudioContentLifecycleState state) =>
         $"studio-content__status studio-content__status--{state.ToString().ToLowerInvariant()}";
+
+    private async Task SaveDraftAsync()
+    {
+        var validation = Editor.Validate();
+        if (!validation.Succeeded)
+        {
+            Editor.ApplyValidationResult(validation);
+            return;
+        }
+
+        Editor.MarkSaving();
+
+        var result = Editor.ContentId is null
+            ? await StudioContentClient.CreateDraftAsync(Editor.ToCreateRequest(), CancellationToken.None)
+            : await StudioContentClient.UpdateDraftAsync(Editor.ToUpdateRequest(), CancellationToken.None);
+
+        ApplyEditorResult(result);
+    }
+
+    private void ApplyEditorResult(StudioContentClientResult<StudioContentEditorModel> result)
+    {
+        switch (result.Status)
+        {
+            case StudioContentClientStatus.Success when result.Value is not null:
+                Editor = result.Value;
+                Editor.MarkSaved();
+                ApplySavedEditorToModel();
+                break;
+            case StudioContentClientStatus.ValidationError when result.Value is not null:
+                Editor = result.Value;
+                break;
+            case StudioContentClientStatus.Unauthorized:
+            case StudioContentClientStatus.Forbidden:
+                Editor.MarkNotAuthorized(result.SafeMessage);
+                break;
+            default:
+                Editor.MarkError(result.SafeMessage);
+                break;
+        }
+    }
+
+    private void ApplySavedEditorToModel()
+    {
+        if (Editor.ContentId is not { } contentId ||
+            Editor.ContentType is not { } contentType ||
+            Model.State != StudioContentPageState.Loaded)
+        {
+            return;
+        }
+
+        var existing = Model.Items.FirstOrDefault(item => item.Id == contentId);
+        var savedAtUtc = DateTimeOffset.UtcNow;
+        var savedItem = new StudioContentListItem(
+            contentId,
+            Editor.ApplicationId,
+            Editor.ContentKey.Trim(),
+            Editor.Title.Trim(),
+            contentType,
+            StudioContentLifecycleState.Draft,
+            [
+                new StudioContentVersionSummary(
+                    existing?.CurrentVersion?.Id ?? Guid.NewGuid(),
+                    Editor.Version,
+                    StudioContentLifecycleState.Draft,
+                    existing?.CurrentVersion?.CreatedAtUtc ?? savedAtUtc)
+            ],
+            new StudioContentHistorySummary(
+                existing?.History.LifecycleEventCount ?? 1,
+                existing?.History.PublishingEventCount ?? 0,
+                "Draft metadata saved locally",
+                savedAtUtc));
+
+        var items = existing is null
+            ? Model.Items.Concat([savedItem]).ToArray()
+            : Model.Items.Select(item => item.Id == contentId ? savedItem : item).ToArray();
+
+        Model = Model with
+        {
+            Items = items,
+            SelectedContentId = contentId,
+            SafeMessage = StudioContentFoundationData.LocalDataNotice
+        };
+    }
+
+    private bool HasIssue(string path) =>
+        Editor.Issues.Any(issue => string.Equals(issue.Path, path, StringComparison.Ordinal));
 
     private static StudioContentPageModel ToPageModel(
         StudioContentClientResult<StudioContentPageModel> result) =>

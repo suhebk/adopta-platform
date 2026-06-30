@@ -70,6 +70,7 @@ public sealed class StudioContentPageTests
         var markup = ReadRepositoryFile("src/Adopta.Web/Components/Pages/Studio/StudioContent.razor");
 
         Assert.Contains("@page \"/studio/content\"", markup, StringComparison.Ordinal);
+        Assert.Contains("@rendermode InteractiveServer", markup, StringComparison.Ordinal);
         Assert.Contains("@inject IStudioContentClient StudioContentClient", markup, StringComparison.Ordinal);
         Assert.Contains("aria-labelledby=\"studio-content-title\"", markup, StringComparison.Ordinal);
         Assert.Contains("<table class=\"studio-content__table\">", markup, StringComparison.Ordinal);
@@ -77,6 +78,7 @@ public sealed class StudioContentPageTests
         Assert.Contains("Content inventory", markup, StringComparison.Ordinal);
         Assert.Contains("Version metadata", markup, StringComparison.Ordinal);
         Assert.Contains("Audit and history summary", markup, StringComparison.Ordinal);
+        Assert.Contains("Guidance metadata editor", markup, StringComparison.Ordinal);
         Assert.Contains("Not authorized", markup, StringComparison.Ordinal);
         Assert.Contains("Loading content", markup, StringComparison.Ordinal);
     }
@@ -87,25 +89,42 @@ public sealed class StudioContentPageTests
         var markup = ReadRepositoryFile("src/Adopta.Web/Components/Pages/Studio/StudioContent.razor");
 
         Assert.Contains("StudioContentClient.ListAsync", markup, StringComparison.Ordinal);
+        Assert.Contains("StudioContentClient.CreateDraftAsync", markup, StringComparison.Ordinal);
+        Assert.Contains("StudioContentClient.UpdateDraftAsync", markup, StringComparison.Ordinal);
         Assert.Contains("new StudioContentListRequest()", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("StudioContentFoundationData.Loaded()", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("HttpClient", markup, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Studio_content_page_does_not_add_authoring_action_ui()
+    public void Studio_content_page_contains_accessible_metadata_editor_markup()
     {
         var markup = ReadRepositoryFile("src/Adopta.Web/Components/Pages/Studio/StudioContent.razor");
 
-        Assert.DoesNotContain("Create content", markup, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Edit content", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<form class=\"studio-content__editor-form\"", markup, StringComparison.Ordinal);
+        Assert.Contains("aria-labelledby=\"guidance-editor-title\"", markup, StringComparison.Ordinal);
+        Assert.Contains("id=\"guidance-title\"", markup, StringComparison.Ordinal);
+        Assert.Contains("id=\"guidance-content-key\"", markup, StringComparison.Ordinal);
+        Assert.Contains("id=\"guidance-content-type\"", markup, StringComparison.Ordinal);
+        Assert.Contains("id=\"guidance-application\"", markup, StringComparison.Ordinal);
+        Assert.Contains("Validation summary", markup, StringComparison.Ordinal);
+        Assert.Contains("Save draft", markup, StringComparison.Ordinal);
+        Assert.Contains("aria-live=\"polite\"", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Studio_content_page_does_not_add_workflow_action_ui()
+    {
+        var markup = ReadRepositoryFile("src/Adopta.Web/Components/Pages/Studio/StudioContent.razor");
+
         Assert.DoesNotContain("Request review", markup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Approve content", markup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Reject content", markup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Publish content", markup, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("<button", markup, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("<form", markup, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("<input", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("review action", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("approve action", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("reject action", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("publish action", markup, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using Adopta.Application.Runtime;
 using Adopta.Web.Studio;
 
 namespace Adopta.UnitTests;
@@ -58,6 +59,77 @@ public sealed class StudioContentClientTests
     }
 
     [Fact]
+    public async Task Local_client_create_draft_returns_safe_typed_result()
+    {
+        var client = new LocalStudioContentClient();
+        var applicationId = StudioContentFoundationData.Loaded().Items.First().ApplicationId;
+
+        var result = await client.CreateDraftAsync(
+            new StudioContentCreateDraftRequest(
+                applicationId,
+                "New tooltip",
+                "new.tooltip",
+                RuntimeContentType.Tooltip,
+                "0.1.0"),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(StudioContentClientStatus.Success, result.Status);
+        Assert.NotNull(result.Value);
+        Assert.NotEqual(Guid.Empty, result.Value.ContentId);
+        Assert.Equal(StudioContentEditorState.Saved, result.Value.State);
+        Assert.Equal(StudioContentLifecycleState.Draft, result.Value.LifecycleState);
+    }
+
+    [Fact]
+    public async Task Local_client_update_draft_returns_safe_typed_result()
+    {
+        var client = new LocalStudioContentClient();
+        var draft = StudioContentFoundationData.Loaded()
+            .Items
+            .First(item => item.LifecycleState == StudioContentLifecycleState.Draft);
+
+        var result = await client.UpdateDraftAsync(
+            new StudioContentUpdateDraftRequest(
+                draft.Id,
+                draft.ApplicationId,
+                "Updated tooltip",
+                "updated.tooltip",
+                RuntimeContentType.Tooltip,
+                draft.CurrentVersion?.Version ?? "0.1.0"),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(StudioContentClientStatus.Success, result.Status);
+        Assert.NotNull(result.Value);
+        Assert.Equal(draft.Id, result.Value.ContentId);
+        Assert.Equal("Updated tooltip", result.Value.Title);
+        Assert.Equal(StudioContentEditorState.Saved, result.Value.State);
+    }
+
+    [Fact]
+    public async Task Local_client_create_draft_rejects_validation_errors_safely()
+    {
+        var client = new LocalStudioContentClient();
+
+        var result = await client.CreateDraftAsync(
+            new StudioContentCreateDraftRequest(
+                Guid.Empty,
+                "Bearer token value",
+                "invalid key",
+                null,
+                "0.1.0"),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(StudioContentClientStatus.ValidationError, result.Status);
+        Assert.NotNull(result.Value);
+        Assert.Equal(StudioContentEditorState.ValidationError, result.Value.State);
+        Assert.DoesNotContain("Bearer", result.SafeMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("token", result.SafeMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Local_client_rejects_empty_content_id_as_invalid_response()
     {
         var client = new LocalStudioContentClient();
@@ -73,20 +145,25 @@ public sealed class StudioContentClientTests
     [Fact]
     public void Client_failure_messages_are_generic_and_safe()
     {
-        var results = new[]
+        var results = new (StudioContentClientStatus Status, bool Succeeded, object? Value, string SafeMessage)[]
         {
-            StudioContentClientResult<StudioContentPageModel>.Unauthorized(),
-            StudioContentClientResult<StudioContentPageModel>.Forbidden(),
-            StudioContentClientResult<StudioContentPageModel>.NotFound(),
-            StudioContentClientResult<StudioContentPageModel>.InvalidResponse(),
-            StudioContentClientResult<StudioContentPageModel>.Unavailable(),
-            StudioContentClientResult<StudioContentPageModel>.UnexpectedError()
+            ToTuple(StudioContentClientResult<StudioContentPageModel>.Unauthorized()),
+            ToTuple(StudioContentClientResult<StudioContentPageModel>.Forbidden()),
+            ToTuple(StudioContentClientResult<StudioContentPageModel>.NotFound()),
+            ToTuple(StudioContentClientResult<StudioContentPageModel>.InvalidResponse()),
+            ToTuple(StudioContentClientResult<StudioContentPageModel>.Unavailable()),
+            ToTuple(StudioContentClientResult<StudioContentPageModel>.UnexpectedError()),
+            ToTuple(StudioContentClientResult<StudioContentEditorModel>.ValidationError(new StudioContentEditorModel()))
         };
 
         Assert.All(results, result =>
         {
             Assert.False(result.Succeeded);
-            Assert.Null(result.Value);
+            if (result.Status != StudioContentClientStatus.ValidationError)
+            {
+                Assert.Null(result.Value);
+            }
+
             AssertSafeMessage(result.SafeMessage);
         });
     }
@@ -97,7 +174,9 @@ public sealed class StudioContentClientTests
         var requestTypes = new[]
         {
             typeof(StudioContentListRequest),
-            typeof(StudioContentGetByIdRequest)
+            typeof(StudioContentGetByIdRequest),
+            typeof(StudioContentCreateDraftRequest),
+            typeof(StudioContentUpdateDraftRequest)
         };
 
         Assert.All(requestTypes, requestType =>
@@ -121,4 +200,8 @@ public sealed class StudioContentClientTests
         Assert.DoesNotContain("hmrc", message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("property", message, StringComparison.OrdinalIgnoreCase);
     }
+
+    private static (StudioContentClientStatus Status, bool Succeeded, object? Value, string SafeMessage) ToTuple<T>(
+        StudioContentClientResult<T> result) =>
+        (result.Status, result.Succeeded, result.Value, result.SafeMessage);
 }
