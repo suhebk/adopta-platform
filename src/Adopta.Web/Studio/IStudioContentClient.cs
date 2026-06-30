@@ -29,4 +29,8 @@ public interface IStudioContentClient
     Task<StudioContentClientResult<StudioWorkflowActionModel>> RejectAsync(
         StudioWorkflowActionRequest request,
         CancellationToken cancellationToken);
+
+    Task<StudioContentClientResult<StudioPublishActionModel>> PublishAsync(
+        StudioPublishActionRequest request,
+        CancellationToken cancellationToken);
 }

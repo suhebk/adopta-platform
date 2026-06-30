@@ -24,3 +24,9 @@ public sealed record StudioContentUpdateDraftRequest(
 public sealed record StudioWorkflowActionRequest(
     Guid ContentId,
     Guid VersionId);
+
+public sealed record StudioPublishActionRequest(
+    Guid ContentId,
+    Guid VersionId,
+    string Environment,
+    DeliveryChannel Channel);

@@ -207,6 +207,110 @@ public sealed class StudioContentClientTests
     }
 
     [Fact]
+    public async Task Local_client_publish_succeeds_for_approved_content()
+    {
+        var client = new LocalStudioContentClient();
+        var approved = StudioContentFoundationData.Loaded()
+            .Items
+            .First(item => item.LifecycleState == StudioContentLifecycleState.Approved);
+
+        var result = await client.PublishAsync(
+            new StudioPublishActionRequest(
+                approved.Id,
+                approved.CurrentVersion?.Id ?? Guid.Empty,
+                "production",
+                DeliveryChannel.Published),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.NotNull(result.Value);
+        Assert.Equal(StudioPublishActionState.Published, result.Value.State);
+        Assert.Equal(StudioContentLifecycleState.Published, result.Value.LifecycleState);
+        Assert.Equal("production", result.Value.Environment);
+        Assert.Equal(DeliveryChannel.Published, result.Value.Channel);
+    }
+
+    [Fact]
+    public async Task Local_client_can_publish_after_local_review_and_approval()
+    {
+        var client = new LocalStudioContentClient();
+        var draft = StudioContentFoundationData.Loaded()
+            .Items
+            .First(item => item.LifecycleState == StudioContentLifecycleState.Draft);
+        var versionId = draft.CurrentVersion?.Id ?? Guid.Empty;
+        var workflowRequest = new StudioWorkflowActionRequest(draft.Id, versionId);
+
+        var reviewResult = await client.RequestReviewAsync(workflowRequest, CancellationToken.None);
+        var approveResult = await client.ApproveAsync(workflowRequest, CancellationToken.None);
+        var publishResult = await client.PublishAsync(
+            new StudioPublishActionRequest(draft.Id, versionId, "production", DeliveryChannel.Published),
+            CancellationToken.None);
+        var listResult = await client.ListAsync(new StudioContentListRequest(), CancellationToken.None);
+
+        Assert.True(reviewResult.Succeeded);
+        Assert.True(approveResult.Succeeded);
+        Assert.True(publishResult.Succeeded);
+        Assert.NotNull(listResult.Value);
+        var updated = listResult.Value.Items.First(item => item.Id == draft.Id);
+        Assert.Equal(StudioContentLifecycleState.Published, updated.LifecycleState);
+        Assert.Equal(1, updated.History.PublishingEventCount);
+    }
+
+    [Theory]
+    [InlineData(StudioContentLifecycleState.Draft)]
+    [InlineData(StudioContentLifecycleState.InReview)]
+    [InlineData(StudioContentLifecycleState.Published)]
+    [InlineData(StudioContentLifecycleState.Archived)]
+    public async Task Local_client_publish_rejects_invalid_lifecycle_states_safely(
+        StudioContentLifecycleState lifecycleState)
+    {
+        var client = new LocalStudioContentClient();
+        var content = StudioContentFoundationData.Loaded()
+            .Items
+            .First(item => item.LifecycleState == lifecycleState);
+
+        var result = await client.PublishAsync(
+            new StudioPublishActionRequest(
+                content.Id,
+                content.CurrentVersion?.Id ?? Guid.Empty,
+                "production",
+                DeliveryChannel.Published),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(StudioContentClientStatus.ValidationError, result.Status);
+        Assert.NotNull(result.Value);
+        Assert.Equal(StudioPublishActionState.ValidationError, result.Value.State);
+        Assert.Contains(result.Value.Issues, issue => issue.Code == "invalid_lifecycle_transition");
+        AssertSafeMessage(result.SafeMessage);
+    }
+
+    [Fact]
+    public async Task Local_client_publish_rejects_invalid_target_safely()
+    {
+        var client = new LocalStudioContentClient();
+        var approved = StudioContentFoundationData.Loaded()
+            .Items
+            .First(item => item.LifecycleState == StudioContentLifecycleState.Approved);
+
+        var result = await client.PublishAsync(
+            new StudioPublishActionRequest(
+                approved.Id,
+                approved.CurrentVersion?.Id ?? Guid.Empty,
+                "Bearer token value",
+                (DeliveryChannel)999),
+            CancellationToken.None);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(StudioContentClientStatus.ValidationError, result.Status);
+        Assert.NotNull(result.Value);
+        Assert.Contains(result.Value.Issues, issue => issue.Code == "invalid_publish_environment");
+        Assert.Contains(result.Value.Issues, issue => issue.Code == "invalid_publish_channel");
+        AssertSafeMessage(result.SafeMessage);
+        Assert.DoesNotContain("Bearer", result.SafeMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Local_client_rejects_empty_content_id_as_invalid_response()
     {
         var client = new LocalStudioContentClient();
@@ -231,7 +335,8 @@ public sealed class StudioContentClientTests
             ToTuple(StudioContentClientResult<StudioContentPageModel>.Unavailable()),
             ToTuple(StudioContentClientResult<StudioContentPageModel>.UnexpectedError()),
             ToTuple(StudioContentClientResult<StudioContentEditorModel>.ValidationError(new StudioContentEditorModel())),
-            ToTuple(StudioContentClientResult<StudioWorkflowActionModel>.ValidationError(new StudioWorkflowActionModel()))
+            ToTuple(StudioContentClientResult<StudioWorkflowActionModel>.ValidationError(new StudioWorkflowActionModel())),
+            ToTuple(StudioContentClientResult<StudioPublishActionModel>.ValidationError(new StudioPublishActionModel()))
         };
 
         Assert.All(results, result =>
@@ -255,7 +360,8 @@ public sealed class StudioContentClientTests
             typeof(StudioContentGetByIdRequest),
             typeof(StudioContentCreateDraftRequest),
             typeof(StudioContentUpdateDraftRequest),
-            typeof(StudioWorkflowActionRequest)
+            typeof(StudioWorkflowActionRequest),
+            typeof(StudioPublishActionRequest)
         };
 
         Assert.All(requestTypes, requestType =>

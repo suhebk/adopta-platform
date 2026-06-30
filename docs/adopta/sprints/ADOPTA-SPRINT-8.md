@@ -384,3 +384,119 @@ rg "HttpClient|Authorization|Bearer|token|header|claim|ConnectionString|Password
 ### Next recommended slice
 
 Add authenticated tenant-aware Studio workflow-client planning or implementation for request review, approve, and reject only, including safe token propagation and `Authoring.Review` / `Authoring.Approve` enforcement, while keeping publish UI, backend drift, migrations, appsettings changes, analytics, AI, deployment automation, and Property MTD integration separately approved.
+
+## Slice 5 - Studio publish UI foundation and Sprint 8 closeout
+
+### Requirement IDs covered
+
+- `FR-AUT-005` - Added a Studio publish UI foundation for approved authored content.
+- `FR-AUT-007` - Represented controlled publish target metadata using existing environment and delivery channel contracts.
+- `FR-GOV-002` - Reused the existing `Authoring.Publish` permission key for publish action metadata.
+- `NFR-A11Y-1` - Added accessible publish labels, validation summary, and live status text.
+- `NFR-SEC-1` - Kept publish requests structural and excluded tenant IDs, tokens, headers, claims, secrets, connection strings, tax/HMRC/property data, sensitive content, and user-entered sensitive values.
+- `NFR-SEC-2` - Added safe local publish validation and generic status/error messages.
+- `NFR-TEST-1` - Added unit coverage for publish availability, permission metadata, local publish client behaviour, tenant-safe request models, page publish markup, and unsafe-output guardrails.
+
+### Scope delivered
+
+- Added `StudioPublishActionModel` with publish state, safe validation issues, environment/channel validation, and permission metadata.
+- Extended `IStudioContentClient` with `PublishAsync`.
+- Added `StudioPublishActionRequest` with content ID, version ID, environment, and delivery channel only.
+- Kept `LocalStudioContentClient` as the only implementation.
+- Updated `/studio/content` with a compact Publish readiness section in the selected-content detail panel.
+- Added controlled publish target fields:
+  - environment: `development`, `test`, `production`;
+  - delivery channel: `Preview`, `Published`.
+- Added a Publish action only when selected content is `Approved`.
+- Locally updates selected content to `Published` after successful local publish validation.
+- Added safe publish validation summary and live publish status feedback.
+
+### Lifecycle rules
+
+- Approved -> Published: publish allowed.
+- Draft: no publish action.
+- InReview: no publish action.
+- Published: no publish action.
+- Archived: no publish action.
+
+### Permission metadata
+
+The publish model references the existing permission key only:
+
+- Publish: `Authoring.Publish`.
+
+No new permission keys are added.
+
+### Environment and channel contracts
+
+The publish UI uses the existing Adopta runtime publishing contracts:
+
+- environment values align with the current runtime validator: `development`, `test`, `production`;
+- delivery channel values align with `DeliveryChannel`: `Preview`, `Published`.
+
+No new environment or channel enum values are introduced.
+
+### Publish assumptions
+
+The Slice 5 publish UI is a Web-local foundation seam only. It does not call the live publish API, does not perform API token propagation, does not execute runtime delivery publication, and does not accept tenant IDs from the page or request models.
+
+Successful publish actions update the local selected content model only. They are not durable persistence and are not production publish execution. A later approved slice must replace the local implementation with authenticated tenant-aware API integration before production publish enablement.
+
+### Explicitly not built
+
+- Live API integration.
+- API token propagation.
+- Backend API changes.
+- EF migrations.
+- Database schema changes.
+- Appsettings changes.
+- Deployment automation.
+- Analytics.
+- AI assistant.
+- Event Hubs.
+- ClickHouse.
+- Browser extension.
+- Property MTD integration.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+rg "HttpClient|Authorization|Bearer|token|header|claim|ConnectionString|Password|Secret|HMRC|tax|property|MarkupString|innerHTML" src/Adopta.Web/Components/Pages/Studio/StudioContent.razor src/Adopta.Web/Studio tests/Adopta.UnitTests/StudioContentClientTests.cs tests/Adopta.UnitTests/StudioPublishActionTests.cs tests/Adopta.UnitTests/StudioContentPageTests.cs
+```
+
+### Known limitations
+
+- Publish remains local and non-durable.
+- No live authenticated publish API call is made.
+- No Web token propagation or API client configuration exists.
+- Publish permission metadata is represented, but full UI authorization enforcement remains deferred.
+- No delivery-store mutation or runtime bundle publication happens from the Studio UI.
+
+### Sprint 8 closeout summary
+
+Sprint 8 delivered the Adoption Studio UI foundation over the existing authoring lifecycle concepts:
+
+- read-only content list and selected content view;
+- safe local Studio content client boundary;
+- metadata-only create/update draft foundation;
+- local review/request/approve/return-to-draft workflow UI foundation;
+- local publish readiness and publish validation UI foundation.
+
+Sprint 8 remains a UI foundation sprint. It does not enable live production authoring writes, live workflow execution, live publishing, API token propagation, or durable Studio UI state.
+
+### Sprint 8 closeout status
+
+Sprint 8 is ready to close once the verification commands above pass and no guardrail searches show backend drift, migrations, appsettings changes, live API additions, deployment automation, or unsafe output patterns.
+
+### Next recommended sprint
+
+Start Sprint 9 with authenticated tenant-aware Studio API integration for read and draft-write workflows, including safe token propagation and explicit permission enforcement, while keeping publishing execution, deployment automation, analytics, AI, Event Hubs, ClickHouse, browser extension, and Property MTD integration separately approved.
