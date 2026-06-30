@@ -7,8 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddStudioApiBoundary(builder.Configuration);
-builder.Services.AddStudioWebAuthenticationSeam(builder.Configuration);
-builder.Services.AddScoped<IStudioContentClient, LocalStudioContentClient>();
+builder.Services.AddStudioReadApiActivationGate(builder.Configuration);
 
 var app = builder.Build();
 

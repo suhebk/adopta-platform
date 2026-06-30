@@ -107,13 +107,14 @@ public sealed class StudioWebAuthenticationConfigurationTests
     }
 
     [Fact]
-    public void Program_registers_web_authentication_seam_without_live_studio_activation()
+    public void Program_registers_read_activation_gate_without_direct_live_studio_activation()
     {
         var program = ReadRepositoryFile("src/Adopta.Web/Program.cs");
 
         Assert.Contains("builder.Services.AddStudioApiBoundary(builder.Configuration);", program, StringComparison.Ordinal);
-        Assert.Contains("builder.Services.AddStudioWebAuthenticationSeam(builder.Configuration);", program, StringComparison.Ordinal);
-        Assert.Contains("builder.Services.AddScoped<IStudioContentClient, LocalStudioContentClient>();", program, StringComparison.Ordinal);
+        Assert.Contains("builder.Services.AddStudioReadApiActivationGate(builder.Configuration);", program, StringComparison.Ordinal);
+        Assert.DoesNotContain("builder.Services.AddStudioWebAuthenticationSeam(builder.Configuration);", program, StringComparison.Ordinal);
+        Assert.DoesNotContain("builder.Services.AddScoped<IStudioContentClient, LocalStudioContentClient>();", program, StringComparison.Ordinal);
         Assert.DoesNotContain("StudioAuthoringReadApiClient", program, StringComparison.Ordinal);
         Assert.DoesNotContain("AddHttpClient<IStudioContentClient", program, StringComparison.Ordinal);
     }

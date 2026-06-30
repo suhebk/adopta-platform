@@ -368,3 +368,122 @@ Results:
 ### Next recommended slice
 
 Add explicit, secure configuration activation for read-only Studio API integration after production Web sign-in and API access settings are provided through secure configuration. Keep live write/workflow/publish integration separately approved.
+
+## Slice 4 - Explicit read-only Studio API activation gate
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Added an explicit activation gate that requires configured Web authentication before live Studio reads are enabled.
+- `FR-IDN-005` - Required configured server-side API access acquisition before live Studio reads are enabled.
+- `FR-IDN-012` - Preserved API-side tenant resolution and avoided tenant IDs in Web page/request models.
+- `FR-IDN-031` - Preserved the Web-to-API boundary that strips tenant/test headers from forwarded requests.
+- `FR-GOV-002` - Activated only the existing read-only authoring API client when all prerequisites are valid.
+- `NFR-SEC-1` - Kept local Studio content as the disabled/default/fail-closed path.
+- `NFR-SEC-2` - Added safe generic activation validation results that do not expose configured values.
+- `NFR-TEST-1` - Added gate registration, fail-closed, read-only, and tenant/header safety tests.
+
+### Scope delivered
+
+- Added `StudioReadApiActivationValidator`.
+- Added typed activation validation result and issue records.
+- Added `AddStudioReadApiActivationGate` service registration.
+- Updated `Program.cs` to use the activation gate.
+- Kept `LocalStudioContentClient` as the default and invalid-config fallback.
+- Registered `StudioAuthoringReadApiClient` only when explicit API, Web authentication, and API access settings are valid.
+- Kept `StudioApiRequestBoundaryHandler` as the only Authorization attachment boundary.
+- Kept create/update/review/approve/reject/publish methods unavailable on the live read API client.
+
+### Activation gate behaviour
+
+Default and disabled behaviour:
+
+- No configuration keeps `IStudioContentClient` on `LocalStudioContentClient`.
+- `StudioApi:Enabled=false` keeps `IStudioContentClient` on `LocalStudioContentClient`.
+- No real appsettings values are required or committed.
+
+Invalid configuration behaviour:
+
+- Enabled API configuration without a valid HTTPS base address fails closed to `LocalStudioContentClient`.
+- Enabled API configuration without valid Web authentication prerequisites fails closed to `LocalStudioContentClient`.
+- Enabled API configuration without enabled API access acquisition and safe scopes fails closed to `LocalStudioContentClient`.
+- Validation issues use safe generic messages and do not echo configured values.
+
+Valid configuration behaviour:
+
+- `StudioApi:Enabled=true`.
+- `StudioApi:BaseAddress` is an HTTPS absolute address supplied by secure configuration.
+- Web authentication is enabled and complete.
+- API access acquisition is enabled with safe configured scopes.
+- Only then `IStudioContentClient` resolves to `StudioAuthoringReadApiClient`.
+- The activated client supports live list/get reads only.
+
+### Tenant, header and token safety
+
+- Tenant IDs are not accepted from Web routes, query strings, bodies, forms, page state, or request models.
+- Web does not add `X-Adopta-Tenant-Id`.
+- Web does not add or forward `X-Adopta-Test-*` headers.
+- `StudioApiRequestBoundaryHandler` remains the only request boundary that can attach Authorization.
+- Access values are not exposed in page models, validation messages, logs, or exceptions.
+
+### Explicitly not built
+
+- Live create draft.
+- Live update draft.
+- Live request review.
+- Live approve.
+- Live reject.
+- Live publish.
+- Auth middleware.
+- Sign-in UI.
+- Packages.
+- Backend API changes.
+- EF migrations.
+- Database schema changes.
+- Appsettings values.
+- Deployment automation.
+- Analytics.
+- AI assistant.
+- Event Hubs.
+- ClickHouse.
+- Browser extension.
+- Property MTD integration.
+
+### Commands run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "X-Adopta-Tenant-Id|X-Adopta-Test-" src/Adopta.Web -g "!src/Adopta.Web/Studio/StudioApiRequestBoundaryHandler.cs" -g "!**/bin/**" -g "!**/obj/**"
+rg "PostAsync|PutAsync|PatchAsync|DeleteAsync|/request-review|/approve|/reject|/publish" src/Adopta.Web/Studio/StudioAuthoringReadApiClient.cs
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+```
+
+Results:
+
+- `dotnet test Adopta.slnx` passed after restore completed with package feed access: 308 unit tests and 90 integration tests.
+- `dotnet build Adopta.slnx --configuration Release --no-restore` passed with 0 warnings and 0 errors.
+- `dotnet test Adopta.slnx --configuration Release --no-build` passed: 308 unit tests and 90 integration tests.
+- `pnpm typecheck`, `pnpm build`, and `pnpm test` passed.
+- No legacy .NET 9 target references were found.
+- No Web tenant/test header forwarding was added outside the existing request boundary handler.
+- No live write/workflow/publish routes were added to the read API client.
+- No migration execution, database creation, startup mutation, live DB connectivity, or health-check registrations were added.
+- No appsettings changes or real secrets were added.
+
+### Known limitations
+
+- No real production auth/appsettings/API activation is committed.
+- Web sign-in UI is still not implemented.
+- Live Studio reads require secure deployment configuration before activation.
+- Live write/workflow/publish integration remains out of scope.
+- `LocalStudioContentClient` remains the safe default for local and invalid configuration.
+
+### Next recommended slice
+
+Add controlled deployment/environment configuration guidance and, only after approved secure settings exist, validate read-only Studio API activation in an integration-style environment. Keep live write/workflow/publish activation separately approved.
