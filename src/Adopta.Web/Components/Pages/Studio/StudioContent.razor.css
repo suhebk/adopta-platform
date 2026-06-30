@@ -280,7 +280,16 @@
     border-top: 1px solid #e7ebf1;
 }
 
-.studio-content__workflow-state {
+.studio-content__publish {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e7ebf1;
+}
+
+.studio-content__workflow-state,
+.studio-content__publish-state {
     color: #40505f;
     font-size: 0.78rem;
     font-weight: 700;
@@ -288,20 +297,24 @@
 }
 
 .studio-content__workflow-help,
-.studio-content__workflow-status {
+.studio-content__workflow-status,
+.studio-content__publish-help,
+.studio-content__publish-status {
     margin: 0;
     color: #516070;
     font-size: 0.86rem;
 }
 
-.studio-content__workflow-actions {
+.studio-content__workflow-actions,
+.studio-content__publish-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
     align-items: center;
 }
 
-.studio-content__workflow-actions button {
+.studio-content__workflow-actions button,
+.studio-content__publish-actions button {
     min-height: 2.2rem;
     padding: 0.42rem 0.75rem;
     border: 1px solid #0f5d9f;
@@ -318,15 +331,23 @@
     color: #334255;
 }
 
-.studio-content__workflow-actions button:disabled {
+.studio-content__workflow-actions button:disabled,
+.studio-content__publish-actions button:disabled {
     border-color: #c4ced8;
     background: #e7ebf1;
     color: #6a7785;
 }
 
-.studio-content__workflow-actions span {
+.studio-content__workflow-actions span,
+.studio-content__publish-actions span {
     color: #516070;
     font-size: 0.84rem;
+}
+
+.studio-content__publish-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
 }
 
 .studio-content__editor-state {
@@ -445,6 +466,10 @@
     }
 
     .studio-content__version {
+        grid-template-columns: 1fr;
+    }
+
+    .studio-content__publish-fields {
         grid-template-columns: 1fr;
     }
 

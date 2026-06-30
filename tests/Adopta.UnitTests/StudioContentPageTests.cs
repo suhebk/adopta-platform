@@ -79,6 +79,7 @@ public sealed class StudioContentPageTests
         Assert.Contains("Version metadata", markup, StringComparison.Ordinal);
         Assert.Contains("Audit and history summary", markup, StringComparison.Ordinal);
         Assert.Contains("Review workflow", markup, StringComparison.Ordinal);
+        Assert.Contains("Publish readiness", markup, StringComparison.Ordinal);
         Assert.Contains("Guidance metadata editor", markup, StringComparison.Ordinal);
         Assert.Contains("Not authorized", markup, StringComparison.Ordinal);
         Assert.Contains("Loading content", markup, StringComparison.Ordinal);
@@ -95,6 +96,7 @@ public sealed class StudioContentPageTests
         Assert.Contains("StudioContentClient.RequestReviewAsync", markup, StringComparison.Ordinal);
         Assert.Contains("StudioContentClient.ApproveAsync", markup, StringComparison.Ordinal);
         Assert.Contains("StudioContentClient.RejectAsync", markup, StringComparison.Ordinal);
+        Assert.Contains("StudioContentClient.PublishAsync", markup, StringComparison.Ordinal);
         Assert.Contains("new StudioContentListRequest()", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("StudioContentFoundationData.Loaded()", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("HttpClient", markup, StringComparison.Ordinal);
@@ -131,6 +133,21 @@ public sealed class StudioContentPageTests
     }
 
     [Fact]
+    public void Studio_content_page_contains_accessible_publish_markup()
+    {
+        var markup = ReadRepositoryFile("src/Adopta.Web/Components/Pages/Studio/StudioContent.razor");
+
+        Assert.Contains("aria-labelledby=\"publish-readiness-title\"", markup, StringComparison.Ordinal);
+        Assert.Contains("Publish validation summary", markup, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Publish target\"", markup, StringComparison.Ordinal);
+        Assert.Contains("id=\"publish-environment\"", markup, StringComparison.Ordinal);
+        Assert.Contains("id=\"publish-channel\"", markup, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Publish actions\"", markup, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Publish approved content\"", markup, StringComparison.Ordinal);
+        Assert.Contains("role=\"status\" aria-live=\"polite\"", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Studio_content_page_guards_workflow_actions_by_lifecycle_state()
     {
         var markup = ReadRepositoryFile("src/Adopta.Web/Components/Pages/Studio/StudioContent.razor");
@@ -144,14 +161,16 @@ public sealed class StudioContentPageTests
     }
 
     [Fact]
-    public void Studio_content_page_does_not_add_publish_action_ui()
+    public void Studio_content_page_guards_publish_action_by_lifecycle_state()
     {
         var markup = ReadRepositoryFile("src/Adopta.Web/Components/Pages/Studio/StudioContent.razor");
 
-        Assert.DoesNotContain("Publish content", markup, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("PublishAsync", markup, StringComparison.Ordinal);
+        Assert.Contains("StudioPublishActionModel.IsPublishAvailable", markup, StringComparison.Ordinal);
+        Assert.Contains("@if (IsPublishActionAvailable)", markup, StringComparison.Ordinal);
+        Assert.Contains("RunPublishAsync", markup, StringComparison.Ordinal);
+        Assert.Contains("new StudioPublishActionRequest", markup, StringComparison.Ordinal);
+        Assert.Contains("No publish action is available.", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("StudioWorkflowActionKind.Publish", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("publish action", markup, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

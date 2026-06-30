@@ -13,8 +13,8 @@
             <h1 id="studio-content-title">Authored Content</h1>
             <p class="studio-content__intro">
                 Authored runtime guidance inventory with a metadata-only draft editor.
-                This view uses local foundation data until authenticated tenant-aware
-                API integration is approved.
+                This view uses local foundation data and local workflow/publish seams
+                until authenticated tenant-aware API integration is approved.
             </p>
         </div>
         <div class="studio-content__notice" role="note">
@@ -179,7 +179,7 @@
                                 <span class="studio-content__workflow-state">@FormatWorkflowState(Workflow.State)</span>
                             </div>
                             <p class="studio-content__workflow-help">
-                                Local foundation workflow for review decisions only. Publishing remains out of scope.
+                                Local foundation workflow for review decisions. Publishing is handled separately below.
                             </p>
 
                             @if (Workflow.HasValidationIssues)
@@ -235,6 +235,82 @@
                                 @Workflow.SafeMessage
                             </p>
                         </section>
+
+                        <section class="studio-content__publish" aria-labelledby="publish-readiness-title">
+                            <div class="studio-content__section-heading">
+                                <h3 id="publish-readiness-title">Publish readiness</h3>
+                                <span class="studio-content__publish-state">@FormatPublishState(Publish.State)</span>
+                            </div>
+                            <p class="studio-content__publish-help">
+                                Local foundation publish validation only. Live delivery execution remains deferred.
+                            </p>
+
+                            @if (Publish.HasValidationIssues)
+                            {
+                                <section class="studio-content__validation" role="alert" aria-labelledby="publish-validation-title">
+                                    <h4 id="publish-validation-title">Publish validation summary</h4>
+                                    <ul>
+                                        @foreach (var issue in Publish.Issues)
+                                        {
+                                            <li>@issue.Message</li>
+                                        }
+                                    </ul>
+                                </section>
+                            }
+
+                            <dl class="studio-content__metadata studio-content__metadata--readonly">
+                                <div>
+                                    <dt>Current state</dt>
+                                    <dd><span class="@GetStatusClass(Publish.LifecycleState)">@FormatLifecycle(Publish.LifecycleState)</span></dd>
+                                </div>
+                                <div>
+                                    <dt>Publish readiness</dt>
+                                    <dd>@FormatPublishReadiness(Publish.LifecycleState)</dd>
+                                </div>
+                                <div>
+                                    <dt>Required permission</dt>
+                                    <dd>@StudioPublishActionModel.GetRequiredPermission()</dd>
+                                </div>
+                            </dl>
+
+                            <div class="studio-content__publish-fields" aria-label="Publish target">
+                                <div class="studio-content__field">
+                                    <label for="publish-environment">Environment</label>
+                                    <select id="publish-environment" name="publish-environment" @bind="Publish.Environment" disabled="@IsPublishUnavailable" aria-invalid='@HasPublishIssue("environment")'>
+                                        @foreach (var environment in PublishEnvironments)
+                                        {
+                                            <option value="@environment">@environment</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="studio-content__field">
+                                    <label for="publish-channel">Delivery channel</label>
+                                    <select id="publish-channel" name="publish-channel" @bind="Publish.Channel" disabled="@IsPublishUnavailable" aria-invalid='@HasPublishIssue("channel")'>
+                                        @foreach (var channel in PublishChannels)
+                                        {
+                                            <option value="@channel">@channel</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="studio-content__publish-actions" aria-label="Publish actions">
+                                @if (IsPublishActionAvailable)
+                                {
+                                    <button type="button" @onclick="RunPublishAsync" disabled="@IsPublishProcessing" aria-label="Publish approved content">
+                                        Publish
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span>No publish action is available.</span>
+                                }
+                            </div>
+
+                            <p class="studio-content__publish-status" role="status" aria-live="polite">
+                                @Publish.SafeMessage
+                            </p>
+                        </section>
                     </aside>
                 }
 
@@ -244,7 +320,7 @@
                         <span class="studio-content__editor-state">@FormatEditorState(Editor.State)</span>
                     </div>
                     <p class="studio-content__editor-help">
-                        Foundation editor for draft metadata only. Content body, review, approval, and publishing actions are out of scope.
+                        Foundation editor for draft metadata only. Content body and live publish execution are out of scope.
                     </p>
 
                     <form class="studio-content__editor-form" aria-describedby="guidance-editor-help" @onsubmit="SaveDraftAsync" @onsubmit:preventDefault="true" novalidate>
@@ -338,11 +414,19 @@
         RuntimeContentType.Walkthrough
     ];
 
+    private static readonly IReadOnlyCollection<string> PublishEnvironments =
+        StudioPublishActionModel.GetAllowedEnvironments();
+
+    private static readonly IReadOnlyCollection<DeliveryChannel> PublishChannels =
+        StudioPublishActionModel.GetAllowedChannels();
+
     private StudioContentPageModel Model = StudioContentFoundationData.Loading();
 
     private StudioContentEditorModel Editor = StudioContentEditorModel.Loading();
 
     private StudioWorkflowActionModel Workflow = StudioWorkflowActionModel.Loading();
+
+    private StudioPublishActionModel Publish = StudioPublishActionModel.Loading();
 
     private StudioContentListItem? SelectedContent => Model.SelectedContent;
 
@@ -360,6 +444,15 @@
     private bool IsWorkflowProcessing =>
         Workflow.State == StudioWorkflowActionState.Processing;
 
+    private bool IsPublishProcessing =>
+        Publish.State == StudioPublishActionState.Publishing;
+
+    private bool IsPublishActionAvailable =>
+        StudioPublishActionModel.IsPublishAvailable(Publish.LifecycleState);
+
+    private bool IsPublishUnavailable =>
+        IsPublishProcessing || !IsPublishActionAvailable;
+
     protected override async Task OnInitializedAsync()
     {
         var result = await StudioContentClient.ListAsync(
@@ -369,6 +462,7 @@
         Model = ToPageModel(result);
         Editor = StudioContentEditorModel.FromContent(Model.SelectedContent);
         Workflow = StudioWorkflowActionModel.FromContent(Model.SelectedContent);
+        Publish = StudioPublishActionModel.FromContent(Model.SelectedContent);
     }
 
     private static string FormatLifecycle(StudioContentLifecycleState state) =>
@@ -412,6 +506,18 @@
             _ => "Unavailable"
         };
 
+    private static string FormatPublishState(StudioPublishActionState state) =>
+        state switch
+        {
+            StudioPublishActionState.Loading => "Loading",
+            StudioPublishActionState.Ready => "Ready",
+            StudioPublishActionState.Publishing => "Publishing",
+            StudioPublishActionState.Published => "Published",
+            StudioPublishActionState.ValidationError => "Validation required",
+            StudioPublishActionState.NotAuthorized => "Not authorized",
+            _ => "Unavailable"
+        };
+
     private static string FormatWorkflowReadiness(StudioContentLifecycleState state) =>
         state switch
         {
@@ -421,6 +527,17 @@
             StudioContentLifecycleState.Published => "Published content has no review actions here.",
             StudioContentLifecycleState.Archived => "Archived content has no review actions here.",
             _ => "No review actions are available."
+        };
+
+    private static string FormatPublishReadiness(StudioContentLifecycleState state) =>
+        state switch
+        {
+            StudioContentLifecycleState.Approved => "Approved content can be published through the local foundation seam.",
+            StudioContentLifecycleState.Draft => "Draft content must be reviewed before publishing.",
+            StudioContentLifecycleState.InReview => "Content must be approved before publishing.",
+            StudioContentLifecycleState.Published => "Content is already published.",
+            StudioContentLifecycleState.Archived => "Archived content cannot be published.",
+            _ => "No publish action is available."
         };
 
     private static string GetStatusClass(StudioContentLifecycleState state) =>
@@ -508,10 +625,14 @@
             SafeMessage = StudioContentFoundationData.LocalDataNotice
         };
         Workflow = StudioWorkflowActionModel.FromContent(Model.SelectedContent);
+        Publish = StudioPublishActionModel.FromContent(Model.SelectedContent);
     }
 
     private bool HasIssue(string path) =>
         Editor.Issues.Any(issue => string.Equals(issue.Path, path, StringComparison.Ordinal));
+
+    private bool HasPublishIssue(string path) =>
+        Publish.Issues.Any(issue => string.Equals(issue.Path, path, StringComparison.Ordinal));
 
     private bool IsWorkflowActionAvailable(StudioWorkflowActionKind action) =>
         StudioWorkflowActionModel.IsActionAvailable(Workflow.LifecycleState, action);
@@ -612,6 +733,99 @@
         };
 
         Editor = StudioContentEditorModel.FromContent(Model.SelectedContent);
+        Publish = StudioPublishActionModel.FromContent(Model.SelectedContent);
+    }
+
+    private async Task RunPublishAsync()
+    {
+        var validation = Publish.Validate();
+        if (!validation.Succeeded)
+        {
+            Publish.ApplyValidationResult(validation);
+            return;
+        }
+
+        Publish.MarkPublishing();
+        var result = await StudioContentClient.PublishAsync(
+            new StudioPublishActionRequest(
+                Publish.ContentId,
+                Publish.VersionId,
+                Publish.Environment,
+                Publish.Channel),
+            CancellationToken.None);
+
+        ApplyPublishResult(result);
+    }
+
+    private void ApplyPublishResult(StudioContentClientResult<StudioPublishActionModel> result)
+    {
+        switch (result.Status)
+        {
+            case StudioContentClientStatus.Success when result.Value is not null:
+                Publish = result.Value;
+                ApplyPublishToModel();
+                break;
+            case StudioContentClientStatus.ValidationError when result.Value is not null:
+                Publish = result.Value;
+                break;
+            case StudioContentClientStatus.Unauthorized:
+            case StudioContentClientStatus.Forbidden:
+                Publish.MarkNotAuthorized(result.SafeMessage);
+                break;
+            default:
+                Publish.MarkError(result.SafeMessage);
+                break;
+        }
+    }
+
+    private void ApplyPublishToModel()
+    {
+        if (Publish.ContentId == Guid.Empty ||
+            Publish.VersionId == Guid.Empty ||
+            Model.State != StudioContentPageState.Loaded)
+        {
+            return;
+        }
+
+        var existing = Model.Items.FirstOrDefault(item => item.Id == Publish.ContentId);
+        if (existing is null)
+        {
+            return;
+        }
+
+        var occurredAtUtc = DateTimeOffset.UtcNow;
+        var versions = existing.Versions
+            .Select(version => version.Id == Publish.VersionId
+                ? version with
+                {
+                    LifecycleState = StudioContentLifecycleState.Published
+                }
+                : version)
+            .ToArray();
+
+        var updatedItem = existing with
+        {
+            LifecycleState = StudioContentLifecycleState.Published,
+            Versions = versions,
+            History = existing.History with
+            {
+                PublishingEventCount = existing.History.PublishingEventCount + 1,
+                LatestSafeActivity = Publish.SafeMessage,
+                LatestActivityAtUtc = occurredAtUtc
+            }
+        };
+
+        Model = Model with
+        {
+            Items = Model.Items
+                .Select(item => item.Id == updatedItem.Id ? updatedItem : item)
+                .ToArray(),
+            SelectedContentId = updatedItem.Id,
+            SafeMessage = StudioContentFoundationData.LocalDataNotice
+        };
+
+        Editor = StudioContentEditorModel.FromContent(Model.SelectedContent);
+        Workflow = StudioWorkflowActionModel.FromContent(Model.SelectedContent);
     }
 
     private static StudioContentPageModel ToPageModel(
