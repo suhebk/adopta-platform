@@ -55,6 +55,7 @@ public sealed class StudioApiConfigurationTests
         var program = ReadRepositoryFile("src/Adopta.Web/Program.cs");
 
         Assert.Contains("builder.Services.AddStudioApiBoundary(builder.Configuration);", program, StringComparison.Ordinal);
+        Assert.Contains("builder.Services.AddStudioWebAuthenticationSeam(builder.Configuration);", program, StringComparison.Ordinal);
         Assert.Contains("builder.Services.AddScoped<IStudioContentClient, LocalStudioContentClient>();", program, StringComparison.Ordinal);
         Assert.DoesNotContain("AddScoped<IStudioContentClient, StudioAuthoringReadApiClient>", program, StringComparison.Ordinal);
         Assert.DoesNotContain("AddHttpClient<IStudioContentClient", program, StringComparison.Ordinal);

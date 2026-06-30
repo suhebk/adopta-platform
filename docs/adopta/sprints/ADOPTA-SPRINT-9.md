@@ -220,3 +220,151 @@ rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlS
 ### Next recommended slice
 
 Implement the authenticated Web sign-in and server-side API token acquisition seam, still without live write/workflow/publish activation. The next slice should decide how Web obtains an API access token securely, how production configuration supplies the API base address without repository secrets, and whether read-only Studio API activation can be enabled behind explicit configuration.
+
+## Slice 3 - Authenticated Web sign-in and server-side API token acquisition seam
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Added typed Web authentication options for the future Microsoft Entra sign-in seam.
+- `FR-IDN-005` - Added a server-side Studio API access provider seam that can use a saved server-side access value when future Web sign-in is enabled.
+- `FR-IDN-012` - Preserved API-side tenant resolution from validated identity claims and server-side tenant mapping.
+- `FR-IDN-031` - Added tests proving Web page/request models do not accept tenant IDs and Web does not use test headers as an integration strategy.
+- `FR-GOV-002` - Preserved the existing authoring read API seam without activating live Studio reads.
+- `NFR-SEC-1` - Kept authentication and API access disabled by default; no secrets or real configuration values were added.
+- `NFR-SEC-2` - Added safe validation and provider failures that do not expose raw exceptions or sensitive values.
+- `NFR-TEST-1` - Added tests for configuration safety, provider behaviour, non-disclosure, and no live activation.
+
+### Scope delivered
+
+- Added disabled-by-default `StudioWebAuthenticationOptions`.
+- Added disabled-by-default `StudioApiTokenAcquisitionOptions`.
+- Added `StudioWebAuthenticationConfigurationValidator` and typed validation result/issue records.
+- Added `MicrosoftIdentityStudioApiAccessTokenProvider` as a server-side provider seam.
+- Added `StudioWebAuthenticationServiceCollectionExtensions`.
+- Registered the Web authentication seam in `Adopta.Web` without changing the default Studio client.
+- Kept `IStudioContentClient -> LocalStudioContentClient` as the default.
+- Kept `StudioAuthoringReadApiClient` inactive.
+- Kept `/studio/content` on local foundation data.
+
+### Slice 3 findings
+
+Live read activation remains deferred because:
+
+- `Adopta.Web` still has no approved production sign-in UI or sign-out UI.
+- No real Microsoft Entra authority, client ID, API base address, scopes, or secret material is committed.
+- Production secrets must come from secure external configuration.
+- The API already owns tenant resolution through validated identity claims and server-side tenant/user mappings.
+- Web must not send tenant IDs, tenant headers, or API test-auth headers.
+
+This slice therefore adds the Web sign-in/token acquisition seam only. It does not enable live reads.
+
+### Future configuration shape
+
+The future secure configuration shape is documented conceptually only. Repository files must not contain real values:
+
+```json
+{
+  "Authentication": {
+    "StudioWeb": {
+      "Enabled": false,
+      "Authority": "<secure-authority-url-from-environment>",
+      "ClientId": "<client-id-from-secure-configuration>",
+      "CallbackPath": "/signin-oidc"
+    }
+  },
+  "StudioApi": {
+    "TokenAcquisition": {
+      "Enabled": false,
+      "Scopes": [
+        "<api-scope-from-secure-configuration>"
+      ]
+    }
+  }
+}
+```
+
+### Auth and token design
+
+- Authentication is disabled by default.
+- API access acquisition is disabled by default.
+- Enabled Web authentication requires complete non-secret settings.
+- Enabled API access acquisition requires explicit scopes.
+- Invalid configuration fails with a generic non-sensitive startup error.
+- The server-side provider reads only server-side authenticated context.
+- The provider does not accept browser-supplied access values.
+- The provider does not return access values to UI models.
+- Provider failures return generic unavailable results.
+- The existing `StudioApiRequestBoundaryHandler` remains the only place future Authorization headers are attached.
+
+### Tenant boundary design
+
+- Tenant IDs are not accepted from page models, request models, routes, query strings, forms, browser headers, or UI state.
+- `X-Adopta-Tenant-Id` is not added by Web.
+- `X-Adopta-Test-*` headers are not used as a Web production path.
+- Tenant resolution remains API-side through validated token claims and server-side tenant mapping.
+
+### Explicitly not built
+
+- Live `/studio/content` API activation.
+- Live create draft.
+- Live update draft.
+- Live request review.
+- Live approve.
+- Live reject.
+- Live publish.
+- Sign-in/sign-out UI endpoints.
+- Browser-supplied token forwarding.
+- Backend API changes.
+- EF migrations.
+- Database schema changes.
+- Appsettings changes.
+- Deployment automation.
+- Analytics.
+- AI assistant.
+- Event Hubs.
+- ClickHouse.
+- Browser extension.
+- Property MTD integration.
+
+### Commands run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "StudioAuthoringReadApiClient|HttpClient|GetAsync|/authoring/content" src/Adopta.Web/Components/Pages/Studio/StudioContent.razor
+rg "AddScoped<IStudioContentClient, LocalStudioContentClient>" src/Adopta.Web/Program.cs
+rg "AddScoped<IStudioContentClient, StudioAuthoringReadApiClient>|AddHttpClient<IStudioContentClient|AddHttpClient<StudioAuthoringReadApiClient" src/Adopta.Web/Program.cs
+rg "X-Adopta-Tenant-Id|X-Adopta-Test-" src/Adopta.Web -g "!src/Adopta.Web/Studio/StudioApiRequestBoundaryHandler.cs" -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+```
+
+Results:
+
+- `dotnet test Adopta.slnx` passed after restore completed with package feed access: 299 unit tests and 90 integration tests.
+- `dotnet build Adopta.slnx --configuration Release --no-restore` passed with 0 warnings and 0 errors.
+- `dotnet test Adopta.slnx --configuration Release --no-build` passed: 299 unit tests and 90 integration tests.
+- `pnpm typecheck`, `pnpm build`, and `pnpm test` passed.
+- No legacy .NET 9 target references were found.
+- `/studio/content` remains local-only and does not activate `StudioAuthoringReadApiClient`.
+- `IStudioContentClient` still defaults to `LocalStudioContentClient`.
+- No Web tenant/test header forwarding was added outside the existing request boundary handler.
+- No migration execution, database creation, startup mutation, live DB connectivity, or health-check registrations were added.
+
+### Known limitations
+
+- Web sign-in UI is not implemented.
+- Real token acquisition against Microsoft Entra is not enabled.
+- No production authority, client ID, API scope, API base address, or secret source is configured in repository files.
+- `/studio/content` still uses local foundation data.
+- `StudioAuthoringReadApiClient` remains inactive.
+- Write/workflow/publish operations remain local or disabled until separately approved.
+
+### Next recommended slice
+
+Add explicit, secure configuration activation for read-only Studio API integration after production Web sign-in and API access settings are provided through secure configuration. Keep live write/workflow/publish integration separately approved.
