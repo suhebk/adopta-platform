@@ -1,7 +1,14 @@
 import type { CalloutContentItem } from "../content/ContentItem";
 import type { RendererContainer } from "./RendererContainer";
+import { RendererPlacementResolver } from "./RendererPlacementResolver";
+import { RendererThemeResolver } from "./RendererThemeResolver";
 
 export class BannerRenderer {
+  public constructor(
+    private readonly placementResolver: RendererPlacementResolver = new RendererPlacementResolver(),
+    private readonly themeResolver: RendererThemeResolver = new RendererThemeResolver()
+  ) {}
+
   public render(
     item: CalloutContentItem,
     container: RendererContainer,
@@ -12,6 +19,8 @@ export class BannerRenderer {
     surface.setAttribute("data-adopta-renderer", "banner");
     surface.setAttribute("role", "status");
     surface.setAttribute("aria-label", item.title);
+    this.placementResolver.apply(surface, item.experience, "banner");
+    this.themeResolver.apply(surface, item.experience);
 
     const title = container.createElement("p");
     title.setAttribute("data-adopta-renderer", "banner-title");

@@ -225,3 +225,64 @@ rg "innerHTML|XPath|screen-coordinate|text matching|querySelector\(|\.value|Form
 ### Next recommended slice
 
 Add renderer placement and theme token interpretation for the existing tooltip, callout/banner, checklist, and walkthrough foundations, keeping targeting evaluation, analytics, event transport, backend/API changes, persistence changes, external storage, Property MTD integration, and production infrastructure out of scope until separately approved.
+
+## Slice 4 - Renderer placement and theme token interpretation
+
+### Requirement IDs covered
+
+- `FR-DEL-014` - Applied controlled placement and theme metadata to SDK-owned runtime surfaces.
+- `FR-DEL-015` - Preserved fail-safe renderer behaviour for invalid content, missing anchors, duplicate anchors, and renderer errors.
+- `FR-IDN-031` - Kept anchoring limited to the existing first-party `data-adopt-id` strategy.
+- `NFR-A11Y-1` - Preserved accessible roles, labels, keyboard behaviour, dismiss behaviour, Escape dismissal, and unmount behaviour while adding visual metadata interpretation.
+- `NFR-PRIV-1` - Avoided host DOM text, field values, form values, tokens, headers, claims, secrets, connection strings, tax/HMRC/property data, and sensitive values.
+- `NFR-TEST-1` - Added TypeScript renderer coverage for placement/theme interpretation, invalid token failures, and raw style/CSS injection guardrails.
+
+### Scope delivered
+
+- Added `RendererPlacementResolver` to map approved placement tokens to SDK-owned `data-adopta-placement` attributes.
+- Added `RendererThemeResolver` to map approved theme tokens to SDK-owned `data-adopta-theme-*` attributes.
+- Applied placement and theme metadata to tooltip, callout/banner, checklist, and walkthrough surfaces.
+- Preserved existing tooltip, callout/banner, checklist, and walkthrough rendering behaviour.
+- Preserved existing dismiss, Escape, and unmount behaviour.
+- Kept placement/theme interpretation token-based only.
+- Added TypeScript tests for supported surfaces, invalid token validation, no inline style/class injection, and existing renderer compatibility.
+
+### Renderer assumptions
+
+Placement interpretation is metadata-only in this slice. It records approved placement tokens on SDK-owned nodes for stylesheet and future layout use, but it does not add screen-coordinate positioning, selector targeting, XPath, text matching, AI/vision fallback, or host DOM measurement.
+
+Theme interpretation is token-only. The renderer records approved tone, density, and emphasis tokens on SDK-owned nodes through safe attributes. It does not accept raw CSS, CSS custom properties, inline style strings, script, markup, or content-provided class names.
+
+Invalid placement or theme metadata fails through the existing content validation path before rendering. Validation messages remain typed and generic and do not echo rejected values.
+
+### Accessibility behaviour
+
+- Tooltip, callout/banner, checklist, and walkthrough roles and labels are preserved.
+- Existing native button controls remain keyboard reachable.
+- Existing Escape dismissal and explicit unmount behaviour are preserved.
+- No autofocus, focus trap, or animation is introduced.
+- Placement/theme attributes do not alter semantic roles or accessible labels.
+
+### Commands to run
+
+```powershell
+pnpm typecheck
+pnpm build
+pnpm test
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "innerHTML|XPath|screen-coordinate|text matching|querySelector\(|\.value|FormData|localStorage|sessionStorage|Authorization|Bearer|Password|ConnectionString|HMRC|tax|property|secret|token|claim|style=" packages/runtime-sdk/src/rendering packages/runtime-sdk/tests/renderer.test.ts
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+```
+
+### Known limitations
+
+- Placement tokens are interpreted as safe metadata only; precise overlay positioning and collision handling are not implemented.
+- Theme tokens are exposed as safe attributes only; a full visual design system stylesheet remains future work.
+- Targeting evaluation, analytics, event transport, backend/API changes, persistence changes, external storage, CDN/Blob Storage publishing, Property MTD integration, migration execution, database creation, and deployment automation remain out of scope.
+
+### Next recommended slice
+
+Add runtime targeting evaluation contracts or renderer polish only after confirming the next slice boundary, keeping analytics, event transport, backend persistence changes, external storage, Property MTD integration, and production infrastructure separately approved.

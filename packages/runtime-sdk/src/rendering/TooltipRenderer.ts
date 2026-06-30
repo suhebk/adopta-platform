@@ -1,7 +1,14 @@
 import type { TooltipContentItem } from "../content/ContentItem";
+import { RendererPlacementResolver } from "./RendererPlacementResolver";
+import { RendererThemeResolver } from "./RendererThemeResolver";
 import type { RendererContainer } from "./RendererContainer";
 
 export class TooltipRenderer {
+  public constructor(
+    private readonly placementResolver: RendererPlacementResolver = new RendererPlacementResolver(),
+    private readonly themeResolver: RendererThemeResolver = new RendererThemeResolver()
+  ) {}
+
   public render(
     item: TooltipContentItem,
     anchor: Element,
@@ -12,6 +19,8 @@ export class TooltipRenderer {
     surface.setAttribute("data-adopta-renderer", "tooltip");
     surface.setAttribute("role", "tooltip");
     surface.setAttribute("aria-label", item.title);
+    this.placementResolver.apply(surface, item.experience, "bottom");
+    this.themeResolver.apply(surface, item.experience);
 
     const title = container.createElement("p");
     title.setAttribute("data-adopta-renderer", "tooltip-title");
