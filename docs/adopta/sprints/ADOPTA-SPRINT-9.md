@@ -112,3 +112,111 @@ rg "CreateDraftAsync|UpdateDraftAsync|RequestReviewAsync|ApproveAsync|RejectAsyn
 ### Next recommended slice
 
 Add Web auth/token propagation and explicit API client activation planning, including safe API base URL configuration, authenticated server-side tenant handling, and `Authoring.Read` enforcement validation. Keep live writes, workflow commands, publishing, backend drift, migrations, appsettings changes, analytics, AI, deployment automation, and Property MTD integration separately approved.
+
+## Slice 2 - Web-to-API auth and tenant propagation boundary
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Added a Web-side boundary for future server-side authenticated API calls.
+- `FR-IDN-005` - Added an access-token provider abstraction without exposing or logging token values.
+- `FR-IDN-012` - Preserved API-side tenant resolution from validated identity context; Web does not supply tenant identifiers.
+- `FR-IDN-031` - Added tests proving tenant and test-auth headers are stripped before future API forwarding.
+- `FR-GOV-002` - Preserved the existing `Authoring.Read` read-client seam without activating live reads.
+- `NFR-SEC-1` - Kept the boundary disabled/unavailable by default and avoided insecure development shortcuts.
+- `NFR-SEC-2` - Added generic, non-sensitive failure behaviour for unavailable or invalid API access.
+- `NFR-TEST-1` - Added unit coverage for boundary service registration, token handling, header stripping, and no live activation.
+
+### Scope delivered
+
+- Added `StudioApiClientOptions` for future explicit Studio API configuration.
+- Added `IStudioApiAccessTokenProvider` and `StudioApiAccessTokenResult`.
+- Added `UnavailableStudioApiAccessTokenProvider` as the default safe server-side provider.
+- Added `StudioApiRequestBoundaryHandler` to attach `Authorization: Bearer` only when a future server-side provider supplies a valid access value.
+- Added header guardrails that strip:
+  - `X-Adopta-Tenant-Id`;
+  - all `X-Adopta-Test-*` headers.
+- Added `StudioApiServiceCollectionExtensions` and registered the disabled boundary in `Adopta.Web`.
+- Preserved `IStudioContentClient -> LocalStudioContentClient` as the default Studio UI client.
+- Kept `StudioAuthoringReadApiClient` inactive.
+
+### Slice 2 findings
+
+Live Studio read activation remains intentionally deferred because:
+
+- `Adopta.Web` still has no approved interactive sign-in/token acquisition implementation.
+- No approved production API access token provider exists yet.
+- No approved Web API base address configuration exists in repository configuration.
+- The API correctly derives tenant context from authenticated claims plus server-side tenant mappings, so Web must not send tenant IDs as a shortcut.
+- API test-auth headers are integration-test-only and must not become a Web production integration strategy.
+
+This slice therefore creates the safe boundary needed for future activation but does not switch `/studio/content` to live API data.
+
+### Auth boundary design
+
+- `IStudioApiAccessTokenProvider` is a server-side seam only.
+- The default provider returns `Unavailable` with a generic safe message.
+- `StudioApiRequestBoundaryHandler` returns a generic service-unavailable response when API access is unavailable or invalid.
+- Token values are not included in result messages, handler error responses, logs, page models, or request models.
+- The handler only sets an `Authorization` header after the server-side provider returns a non-empty value that is safe for an HTTP header.
+
+### Tenant boundary design
+
+- Tenant resolution remains API-side.
+- The API tenant context must continue to come from validated token claims and server-side tenant/user mappings.
+- Web request/page models do not include tenant IDs.
+- Web production code does not add `X-Adopta-Tenant-Id`.
+- Web production code strips `X-Adopta-Test-*` headers before forwarding future API requests.
+
+### Explicitly not built
+
+- Live `/studio/content` API activation.
+- Live create draft.
+- Live update draft.
+- Live request review.
+- Live approve.
+- Live reject.
+- Live publish.
+- Real token acquisition.
+- Browser-context token forwarding.
+- Backend API changes.
+- EF migrations.
+- Database schema changes.
+- Appsettings changes.
+- Deployment automation.
+- Analytics.
+- AI assistant.
+- Event Hubs.
+- ClickHouse.
+- Browser extension.
+- Property MTD integration.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "StudioAuthoringReadApiClient|HttpClient|GetAsync|/authoring/content" src/Adopta.Web/Components/Pages/Studio/StudioContent.razor
+rg "AddScoped<IStudioContentClient, LocalStudioContentClient>" src/Adopta.Web/Program.cs
+rg "AddScoped<IStudioContentClient, StudioAuthoringReadApiClient>|AddHttpClient<IStudioContentClient|AddHttpClient<StudioAuthoringReadApiClient" src/Adopta.Web/Program.cs
+rg "X-Adopta-Tenant-Id|X-Adopta-Test-" src/Adopta.Web -g "!src/Adopta.Web/Studio/StudioApiRequestBoundaryHandler.cs" -g "!**/bin/**" -g "!**/obj/**"
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+```
+
+### Known limitations
+
+- The Web auth/token provider remains unavailable by default.
+- The Studio API base address is modeled but not configured.
+- `/studio/content` still uses the local foundation client.
+- `StudioAuthoringReadApiClient` remains inactive.
+- No live API integration is enabled until a production-grade sign-in/token acquisition design is approved.
+- Write/workflow/publish operations remain local or disabled until separately approved.
+
+### Next recommended slice
+
+Implement the authenticated Web sign-in and server-side API token acquisition seam, still without live write/workflow/publish activation. The next slice should decide how Web obtains an API access token securely, how production configuration supplies the API base address without repository secrets, and whether read-only Studio API activation can be enabled behind explicit configuration.
