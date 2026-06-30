@@ -286,3 +286,108 @@ rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!*
 ### Next recommended slice
 
 Add runtime targeting evaluation contracts or renderer polish only after confirming the next slice boundary, keeping analytics, event transport, backend persistence changes, external storage, Property MTD integration, and production infrastructure separately approved.
+
+## Slice 5 - Runtime experience hardening and Sprint 7 closeout
+
+### Requirement IDs covered
+
+- `FR-DEL-014` - Re-reviewed runtime surfaces for SDK-owned node creation, teardown, and safe host application boundaries.
+- `FR-DEL-015` - Added renderer hardening coverage for generic failure results, unsupported anchor strategies, sensitive marker non-echo, and idempotent unmount.
+- `FR-IDN-031` - Verified runtime rendering remains limited to the existing `data-adopt-id` anchor strategy.
+- `NFR-A11Y-1` - Added accessibility hardening coverage for roles, labels, native controls, Escape dismissal, no focus trap, no autofocus, and no animation/style injection.
+- `NFR-PRIV-1` - Added privacy guardrails for host DOM text reads, input/form/value reads, sensitive markers, raw markup handling, and safe renderer result messages.
+- `NFR-TEST-1` - Expanded TypeScript renderer tests for runtime hardening and Sprint 7 closeout confidence.
+
+### Scope delivered
+
+- Reviewed tooltip, callout/banner, checklist, and walkthrough runtime renderer safety.
+- Added focused hardening tests for accessibility invariants across all supported renderer surfaces.
+- Added tests that placement/theme metadata preserves semantic roles and accessible labels.
+- Added tests proving native controls remain buttons without autofocus, focus traps, or modal semantics.
+- Added tests proving no inline style, class, animation, transition, or focus-management attributes are introduced by renderer hardening.
+- Added tests for unsupported anchor strategy rejection.
+- Added tests proving sensitive anchor values are not echoed in renderer failures.
+- Added tests proving all supported surfaces render without reading host DOM text, input values, or field values.
+- Added idempotent unmount coverage for SDK-owned nodes and event listeners.
+- Closed Sprint 7 documentation at the runtime rendering foundation level.
+
+### Runtime renderer foundation status
+
+Sprint 7 now supports the approved runtime guidance surfaces:
+
+- tooltip;
+- callout/banner;
+- checklist;
+- walkthrough.
+
+The runtime renderer validates content before rendering, uses the existing first-party `data-adopt-id` anchor strategy, creates SDK-owned nodes only, renders text through safe DOM APIs, supports explicit dismiss and Escape dismissal, and exposes placement/theme metadata only through controlled SDK-owned attributes.
+
+### Accessibility posture
+
+- Tooltip, callout/banner, checklist, and walkthrough surfaces retain semantic roles and accessible labels.
+- Dismiss, previous, and next controls are native buttons with accessible labels.
+- Escape dismissal remains covered.
+- Explicit unmount remains covered.
+- No autofocus, focus trap, modal semantics, animation, transition, inline style, or content-provided class names are introduced.
+- Placement/theme metadata does not remove roles or labels.
+
+### Privacy and security posture
+
+- The renderer does not read host DOM text.
+- The renderer does not read host input values, form values, or field values.
+- The renderer does not capture tokens, headers, claims, secrets, connection strings, tax/HMRC/property data, user-entered values, or sensitive values.
+- Raw markup is rendered as text.
+- Unsupported anchor strategies fail safely before rendering.
+- Renderer failure messages remain generic and do not echo sensitive anchor values.
+- Runtime output remains isolated to SDK-owned nodes and listeners.
+
+### Test coverage summary
+
+Sprint 7 runtime SDK tests cover:
+
+- runtime experience content contract validation;
+- checklist and walkthrough contract compatibility;
+- tooltip rendering;
+- callout/banner rendering;
+- checklist rendering;
+- walkthrough rendering and local navigation;
+- placement and theme token interpretation;
+- missing and duplicate anchor failures;
+- unsupported anchor strategy rejection;
+- raw markup safety;
+- privacy read traps;
+- accessibility roles, labels, and native controls;
+- dismiss, Escape, and unmount cleanup;
+- idempotent unmount.
+
+### Commands to run
+
+```powershell
+pnpm typecheck
+pnpm build
+pnpm test
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "innerHTML|XPath|screen-coordinate|text matching|querySelector\(|\.value|FormData|localStorage|sessionStorage|Authorization|Bearer|Password|ConnectionString|HMRC|tax|property|secret|token|claim|style=" packages/runtime-sdk/src/rendering packages/runtime-sdk/tests/renderer.test.ts
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+```
+
+### Known limitations
+
+- Checklist completion state is display-only and not persisted.
+- Walkthrough state is local only and not persisted.
+- Walkthrough navigation does not include branching, targeting, completion rules, or advance triggers.
+- Placement tokens remain metadata-only and do not implement collision handling or measured overlay positioning.
+- Theme tokens remain safe attributes and do not include a full production visual stylesheet.
+- No analytics, event transport, backend/API change, persistence change, external storage, CDN/Blob Storage publishing, Property MTD integration, migration execution, database creation, or deployment automation was added.
+
+### Sprint 7 closeout status
+
+Sprint 7 is ready to close at the runtime experience rendering foundation level. The platform now has privacy-safe, accessible, framework-agnostic runtime rendering foundations for tooltip, callout/banner, checklist, and walkthrough guidance, with controlled placement/theme metadata interpretation and focused hardening coverage.
+
+### Next recommended sprint
+
+Move to the next approved platform direction only after a fresh planning review. Strong candidates are runtime targeting evaluation boundaries, runtime visual styling polish, or authoring-to-rendering workflow improvements, while keeping analytics, event transport, backend persistence changes, external storage, Property MTD integration, and production infrastructure separately approved.

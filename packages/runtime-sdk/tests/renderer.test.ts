@@ -239,6 +239,118 @@ describe("runtime renderer foundation", () => {
     }
   });
 
+  it("preserves semantic roles and accessible labels when placement and theme metadata are applied", () => {
+    const dom = new FakeDocument();
+    dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
+    const experience = {
+      placement: {
+        preferred: "center" as const,
+        fallback: ["bottom" as const]
+      },
+      theme: {
+        tone: "success" as const,
+        density: "compact" as const,
+        emphasis: "strong" as const
+      }
+    };
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([
+        {
+          ...tooltipItem(),
+          experience
+        },
+        {
+          ...calloutItem(),
+          experience
+        },
+        {
+          ...richChecklistItem(),
+          experience
+        },
+        {
+          ...richWalkthroughItem(),
+          experience
+        }
+      ]));
+
+    expect(result.ok).toBe(true);
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "tooltip")?.getAttribute("role"))
+      .toBe("tooltip");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "tooltip")?.getAttribute("aria-label"))
+      .toBe("Submit return");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "banner")?.getAttribute("role"))
+      .toBe("status");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "banner")?.getAttribute("aria-label"))
+      .toBe("Announcement");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "checklist")?.getAttribute("role"))
+      .toBe("region");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "checklist")?.getAttribute("aria-label"))
+      .toBe("Onboarding checklist");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough")?.getAttribute("role"))
+      .toBe("region");
+    expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough")?.getAttribute("aria-label"))
+      .toBe("Setup walkthrough");
+  });
+
+  it("uses native accessible controls without autofocus or focus traps", () => {
+    const dom = new FakeDocument();
+    dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([
+        tooltipItem(),
+        calloutItem(),
+        richChecklistItem(),
+        richWalkthroughItem()
+      ]));
+
+    expect(result.ok).toBe(true);
+    const controls = findByTagName(dom.body, "button")
+      .filter((button) => button.getAttribute("aria-label") !== null);
+    expect(controls.length).toBeGreaterThanOrEqual(6);
+    expect(findByAttribute(dom.body, "aria-label", "Dismiss guidance")?.tagName)
+      .toBe("button");
+    expect(findByAttribute(dom.body, "aria-label", "Dismiss checklist guidance")?.tagName)
+      .toBe("button");
+    expect(findByAttribute(dom.body, "aria-label", "Previous walkthrough step")?.tagName)
+      .toBe("button");
+    expect(findByAttribute(dom.body, "aria-label", "Next walkthrough step")?.tagName)
+      .toBe("button");
+    expect(findByAttribute(dom.body, "aria-label", "Dismiss walkthrough guidance")?.tagName)
+      .toBe("button");
+
+    for (const button of controls) {
+      expect(button.getAttribute("type")).toBe("button");
+      expect(button.getAttribute("autofocus")).toBeNull();
+      expect(button.getAttribute("tabindex")).toBeNull();
+      expect(button.getAttribute("aria-modal")).toBeNull();
+      expect(button.getAttribute("data-adopta-focus-trap")).toBeNull();
+    }
+  });
+
+  it("does not add inline style, animation, or focus-management attributes", () => {
+    const dom = new FakeDocument();
+    dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([
+        tooltipItem(),
+        calloutItem(),
+        richChecklistItem(),
+        richWalkthroughItem()
+      ]));
+
+    expect(result.ok).toBe(true);
+    for (const element of collectAllElements(dom.body)) {
+      expect(element.getAttribute("style")).toBeNull();
+      expect(element.getAttribute("class")).toBeNull();
+      expect(element.getAttribute("autofocus")).toBeNull();
+      expect(element.getAttribute("tabindex")).toBeNull();
+      expect(element.getAttribute("aria-modal")).toBeNull();
+      expect(element.getAttribute("data-adopta-focus-trap")).toBeNull();
+      expect(element.getAttribute("data-adopta-animation")).toBeNull();
+      expect(element.getAttribute("data-adopta-transition")).toBeNull();
+    }
+  });
+
   it("navigates walkthrough steps with correct control states", () => {
     const dom = new FakeDocument();
     const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
@@ -376,6 +488,32 @@ describe("runtime renderer foundation", () => {
     expect(findRendererNodes(dom.body)).toHaveLength(0);
   });
 
+  it("rejects unsupported anchor strategies without rendering", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{
+        ...tooltipItem(),
+        anchor: {
+          strategy: "css-selector",
+          value: "#billing-submit"
+        }
+      } as unknown as ContentItem]));
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "invalid_bundle",
+      message: "Renderer failed safely."
+    });
+    if (!result.ok) {
+      expect(result.validationIssues).toEqual([
+        expect.objectContaining({
+          code: "invalid_anchor_descriptor"
+        })
+      ]);
+    }
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
   it("fails safely when placement tokens are invalid", () => {
     const dom = new FakeDocument();
     const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
@@ -426,6 +564,27 @@ describe("runtime renderer foundation", () => {
         })
       ]);
     }
+    expect(JSON.stringify(result)).not.toContain(sensitiveMarker);
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
+  it("does not echo sensitive anchor values in renderer failures", () => {
+    const dom = new FakeDocument();
+    const sensitiveMarker = "Bearer secret;Password=secret;ConnectionString=value;HMRC;tax;property";
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{
+        ...tooltipItem(),
+        anchor: {
+          strategy: "data-adopt-id",
+          value: sensitiveMarker
+        }
+      }]));
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "missing_anchor",
+      message: "Renderer failed safely."
+    });
     expect(JSON.stringify(result)).not.toContain(sensitiveMarker);
     expect(findRendererNodes(dom.body)).toHaveLength(0);
   });
@@ -560,6 +719,33 @@ describe("runtime renderer foundation", () => {
 
     expect(result.ok).toBe(true);
     expect(sensitiveHostElement.sensitiveReadCount).toBe(0);
+  });
+
+  it("does not read host text, input values, or form values while rendering all supported surfaces", () => {
+    const dom = new FakeDocument();
+    const sensitiveTooltipAnchor = dom.createHostElement("input", "billing.submit", true);
+    const sensitiveWalkthroughAnchor = dom.createHostElement("input", "walkthrough.sensitive", true);
+    dom.body.appendChild(sensitiveTooltipAnchor);
+    dom.body.appendChild(sensitiveWalkthroughAnchor);
+
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([
+        tooltipItem(),
+        calloutItem(),
+        richChecklistItem(),
+        richWalkthroughItem([{
+          id: "sensitive-anchor",
+          title: "Anchored step",
+          anchor: {
+            strategy: "data-adopt-id",
+            value: "walkthrough.sensitive"
+          }
+        }])
+      ]));
+
+    expect(result.ok).toBe(true);
+    expect(sensitiveTooltipAnchor.sensitiveReadCount).toBe(0);
+    expect(sensitiveWalkthroughAnchor.sensitiveReadCount).toBe(0);
   });
 
   it("dismisses rendered nodes on Escape and removes listener", () => {
@@ -718,6 +904,32 @@ describe("runtime renderer foundation", () => {
     expect(dom.listenerCount("keydown")).toBe(0);
   });
 
+  it("unmount is idempotent for SDK-owned nodes and listeners", () => {
+    const dom = new FakeDocument();
+    dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([
+        tooltipItem(),
+        calloutItem(),
+        richChecklistItem(),
+        richWalkthroughItem()
+      ]));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(findRendererNodes(dom.body).length).toBeGreaterThan(0);
+    expect(dom.listenerCount("keydown")).toBe(4);
+
+    result.mount.unmount();
+    result.mount.unmount();
+
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+    expect(dom.listenerCount("keydown")).toBe(0);
+  });
+
   it("cleans up partial SDK nodes when rendering fails midway", () => {
     const dom = new FakeDocument();
     const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
@@ -861,6 +1073,13 @@ function findAllByAttribute(
 
 function findByTagName(root: FakeElement, tagName: string): FakeElement[] {
   return root.collectByTagName(tagName);
+}
+
+function collectAllElements(root: FakeElement): FakeElement[] {
+  return [
+    root,
+    ...root.children.flatMap(collectAllElements)
+  ];
 }
 
 class FakeDocument {
