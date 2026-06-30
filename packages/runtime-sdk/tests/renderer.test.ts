@@ -42,6 +42,46 @@ describe("runtime renderer foundation", () => {
     expect(banner?.getAttribute("aria-label")).toBe("Announcement");
   });
 
+  it("applies placement attributes to tooltip", () => {
+    const dom = new FakeDocument();
+    const anchor = dom.createHostElement("button", "billing.submit");
+    dom.body.appendChild(anchor);
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{
+        ...tooltipItem(),
+        experience: {
+          placement: {
+            preferred: "top",
+            fallback: ["bottom", "right"]
+          }
+        }
+      }]));
+
+    expect(result.ok).toBe(true);
+    const tooltip = findByAttribute(dom.body, "data-adopta-renderer", "tooltip");
+    expect(tooltip?.getAttribute("data-adopta-placement")).toBe("top");
+    expect(tooltip?.getAttribute("data-adopta-placement-fallback")).toBe("bottom right");
+  });
+
+  it("applies placement attributes to callout/banner", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{
+        ...calloutItem(),
+        experience: {
+          placement: {
+            preferred: "banner",
+            fallback: ["top"]
+          }
+        }
+      }]));
+
+    expect(result.ok).toBe(true);
+    const banner = findByAttribute(dom.body, "data-adopta-renderer", "banner");
+    expect(banner?.getAttribute("data-adopta-placement")).toBe("banner");
+    expect(banner?.getAttribute("data-adopta-placement-fallback")).toBe("top");
+  });
+
   it("renders checklist title, body, and ordered steps", () => {
     const dom = new FakeDocument();
     const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
@@ -67,6 +107,25 @@ describe("runtime renderer foundation", () => {
     expect(steps[0]?.getAttribute("role")).toBe("listitem");
     expect(steps[0]?.getAttribute("data-adopta-checklist-state")).toBe("incomplete");
     expect(steps[1]?.getAttribute("data-adopta-checklist-state")).toBe("incomplete");
+  });
+
+  it("applies placement attributes to checklist", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{
+        ...richChecklistItem(),
+        experience: {
+          placement: {
+            preferred: "center",
+            fallback: ["inline"]
+          }
+        }
+      }]));
+
+    expect(result.ok).toBe(true);
+    const checklist = findByAttribute(dom.body, "data-adopta-renderer", "checklist");
+    expect(checklist?.getAttribute("data-adopta-placement")).toBe("center");
+    expect(checklist?.getAttribute("data-adopta-placement-fallback")).toBe("inline");
   });
 
   it("renders checklist state as display-only without input controls", () => {
@@ -122,6 +181,62 @@ describe("runtime renderer foundation", () => {
       .toBe("Open the setup area.");
     expect(findByAttribute(dom.body, "data-adopta-renderer", "walkthrough-progress")?.textContent)
       .toBe("Step 1 of 2");
+  });
+
+  it("applies placement attributes to walkthrough", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{
+        ...richWalkthroughItem(),
+        experience: {
+          placement: {
+            preferred: "left",
+            fallback: ["right", "center"]
+          }
+        }
+      }]));
+
+    expect(result.ok).toBe(true);
+    const walkthrough = findByAttribute(dom.body, "data-adopta-renderer", "walkthrough");
+    expect(walkthrough?.getAttribute("data-adopta-placement")).toBe("left");
+    expect(walkthrough?.getAttribute("data-adopta-placement-fallback")).toBe("right center");
+  });
+
+  it("applies theme attributes to supported surfaces", () => {
+    const dom = new FakeDocument();
+    dom.body.appendChild(dom.createHostElement("button", "billing.submit"));
+    const theme = {
+      tone: "info" as const,
+      density: "compact" as const,
+      emphasis: "strong" as const
+    };
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([
+        {
+          ...tooltipItem(),
+          experience: { theme }
+        },
+        {
+          ...calloutItem(),
+          experience: { theme }
+        },
+        {
+          ...richChecklistItem(),
+          experience: { theme }
+        },
+        {
+          ...richWalkthroughItem(),
+          experience: { theme }
+        }
+      ]));
+
+    expect(result.ok).toBe(true);
+    for (const rendererName of ["tooltip", "banner", "checklist", "walkthrough"]) {
+      const surface = findByAttribute(dom.body, "data-adopta-renderer", rendererName);
+      expect(surface?.getAttribute("data-adopta-theme-tone")).toBe("info");
+      expect(surface?.getAttribute("data-adopta-theme-density")).toBe("compact");
+      expect(surface?.getAttribute("data-adopta-theme-emphasis")).toBe("strong");
+    }
   });
 
   it("navigates walkthrough steps with correct control states", () => {
@@ -261,6 +376,60 @@ describe("runtime renderer foundation", () => {
     expect(findRendererNodes(dom.body)).toHaveLength(0);
   });
 
+  it("fails safely when placement tokens are invalid", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{
+        ...calloutItem(),
+        experience: {
+          placement: {
+            preferred: "body { color: red; }"
+          }
+        }
+      } as unknown as ContentItem]));
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "invalid_bundle"
+    });
+    if (!result.ok) {
+      expect(result.validationIssues).toEqual([
+        expect.objectContaining({
+          code: "invalid_renderer_placement"
+        })
+      ]);
+    }
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
+  it("fails safely when theme tokens are invalid without echoing sensitive markers", () => {
+    const dom = new FakeDocument();
+    const sensitiveMarker = "Password=secret;Bearer token;ConnectionString=value";
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{
+        ...calloutItem(),
+        experience: {
+          theme: {
+            tone: sensitiveMarker
+          }
+        }
+      } as unknown as ContentItem]));
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: "invalid_bundle"
+    });
+    if (!result.ok) {
+      expect(result.validationIssues).toEqual([
+        expect.objectContaining({
+          code: "invalid_renderer_theme"
+        })
+      ]);
+    }
+    expect(JSON.stringify(result)).not.toContain(sensitiveMarker);
+    expect(findRendererNodes(dom.body)).toHaveLength(0);
+  });
+
   it("renders content as text instead of raw markup", () => {
     const dom = new FakeDocument();
     const anchor = dom.createHostElement("button", "billing.submit");
@@ -273,6 +442,33 @@ describe("runtime renderer foundation", () => {
     const renderedBody = findByAttribute(dom.body, "data-adopta-renderer", "tooltip-body");
     expect(renderedBody?.textContent).toBe(rawBody);
     expect(renderedBody?.children).toHaveLength(0);
+    expect(dom.innerMarkupWriteCount).toBe(0);
+  });
+
+  it("does not apply inline styles or raw CSS from placement and theme metadata", () => {
+    const dom = new FakeDocument();
+    const result = new Renderer({ document: dom.asDocument(), root: dom.body.asParentNode() })
+      .render(bundle([{
+        ...calloutItem(),
+        experience: {
+          placement: {
+            preferred: "banner",
+            fallback: ["top"]
+          },
+          theme: {
+            tone: "warning",
+            density: "compact",
+            emphasis: "strong"
+          }
+        }
+      }]));
+
+    expect(result.ok).toBe(true);
+    const banner = findByAttribute(dom.body, "data-adopta-renderer", "banner");
+    expect(banner?.getAttribute("style")).toBeNull();
+    expect(banner?.getAttribute("class")).toBeNull();
+    expect(banner?.getAttribute("data-adopta-placement")).toBe("banner");
+    expect(banner?.getAttribute("data-adopta-theme-tone")).toBe("warning");
     expect(dom.innerMarkupWriteCount).toBe(0);
   });
 

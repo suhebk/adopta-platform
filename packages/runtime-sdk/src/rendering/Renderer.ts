@@ -24,6 +24,8 @@ import {
 } from "./RendererResult";
 import { TooltipRenderer } from "./TooltipRenderer";
 import { WalkthroughRenderer } from "./WalkthroughRenderer";
+import { RendererPlacementResolver } from "./RendererPlacementResolver";
+import { RendererThemeResolver } from "./RendererThemeResolver";
 
 export class Renderer {
   private readonly anchorResolver: AnchorResolver;
@@ -34,10 +36,12 @@ export class Renderer {
 
   public constructor(private readonly options: RendererOptions = {}) {
     this.anchorResolver = options.anchorResolver ?? new AnchorResolver();
-    this.tooltipRenderer = new TooltipRenderer();
-    this.bannerRenderer = new BannerRenderer();
-    this.checklistRenderer = new ChecklistRenderer();
-    this.walkthroughRenderer = new WalkthroughRenderer();
+    const placementResolver = new RendererPlacementResolver();
+    const themeResolver = new RendererThemeResolver();
+    this.tooltipRenderer = new TooltipRenderer(placementResolver, themeResolver);
+    this.bannerRenderer = new BannerRenderer(placementResolver, themeResolver);
+    this.checklistRenderer = new ChecklistRenderer(placementResolver, themeResolver);
+    this.walkthroughRenderer = new WalkthroughRenderer(placementResolver, themeResolver);
   }
 
   public render(bundle: ContentBundle): RendererResult {
