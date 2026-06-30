@@ -100,6 +100,8 @@ public sealed class StudioContentPageTests
         Assert.Contains("new StudioContentListRequest()", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("StudioContentFoundationData.Loaded()", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("HttpClient", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("@inject LocalStudioContentClient", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("@inject StudioAuthoringReadApiClient", markup, StringComparison.Ordinal);
     }
 
     [Fact]

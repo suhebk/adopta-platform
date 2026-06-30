@@ -43,6 +43,8 @@ public sealed record StudioContentListItem(
     IReadOnlyCollection<StudioContentVersionSummary> Versions,
     StudioContentHistorySummary History)
 {
+    public bool HasKnownContentType { get; init; } = true;
+
     public StudioContentVersionSummary? CurrentVersion => Versions.FirstOrDefault();
 }
 

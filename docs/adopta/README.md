@@ -35,6 +35,7 @@ Property Income MTD remains undisturbed while its remaining sprints continue. Ad
 | sprints | ADOPTA-SPRINT-5 | Controlled production enablement foundations, starting with reviewable EF schema baseline generation. |
 | sprints | ADOPTA-SPRINT-6 | Runtime delivery API and bundle retrieval foundation. |
 | sprints | ADOPTA-SPRINT-8 | Adoption Studio UI foundation, starting with read-only content list and view. |
+| sprints | ADOPTA-SPRINT-9 | Controlled authenticated Studio API integration, starting with the read-only API client seam. |
 
 ## Important superseding decisions
 
