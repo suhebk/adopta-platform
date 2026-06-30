@@ -14,6 +14,30 @@ It documents the approved configuration shape and activation prerequisites only.
 - The live API client supports read-only list/get operations only.
 - Create, update, review, approve, reject, and publish operations remain unavailable on the live API client.
 
+## Studio Read API Preflight Layer
+
+The Studio read API preflight layer is a server-side operational readiness reporter. It is not an activation mechanism.
+
+The preflight layer:
+
+- reuses `StudioReadApiActivationValidator` as the source of truth for activation validity;
+- reports whether activation is disabled, ready, or invalid;
+- reports readiness checks using generic safe messages only;
+- confirms disabled-by-default and fail-closed posture;
+- confirms the request boundary and tenant/test header guardrails;
+- confirms the live read client remains read-only;
+- confirms local fallback remains available for disabled or invalid activation.
+
+The preflight layer does not:
+
+- enable live Studio reads;
+- alter dependency injection activation decisions;
+- perform HTTP or network calls;
+- read or expose configured endpoint values;
+- expose authority values, client identifiers, configured access values, tenant identifiers, raw headers, raw claims, secrets, or raw exceptions.
+
+Preflight output is limited to check code, check status, and a generic safe message.
+
 ## Required Configuration Keys
 
 The following keys must be supplied by secure environment configuration before read-only Studio API activation is considered ready. Repository files must not contain real values.
@@ -154,6 +178,7 @@ Before enabling read-only Studio API integration in an environment:
 - Confirm the API still enforces tenant context and `Authoring.Read`.
 - Confirm no Web page or request model accepts tenant IDs.
 - Confirm no Web production path sends tenant or test-auth headers.
+- Confirm the Studio read API preflight reports ready with safe output only.
 - Confirm the environment has rollback instructions to disable `StudioApi:Enabled`.
 - Confirm logs and UI errors remain generic and non-sensitive.
 - Confirm write/workflow/publish API activation remains separately approved.

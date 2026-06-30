@@ -12,6 +12,8 @@ public static class StudioApiServiceCollectionExtensions
             configuration.GetSection(StudioApiClientOptions.SectionName));
         services.TryAddScoped<IStudioApiAccessTokenProvider, UnavailableStudioApiAccessTokenProvider>();
         services.AddTransient<StudioApiRequestBoundaryHandler>();
+        services.TryAdd(ServiceDescriptor.Scoped<IStudioReadApiPreflightService>(_ =>
+            new StudioReadApiPreflightService(configuration)));
 
         return services;
     }
