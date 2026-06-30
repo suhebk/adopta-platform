@@ -5,7 +5,8 @@ import type {
   CalloutContentItem,
   ChecklistContentItem,
   ContentItem,
-  TooltipContentItem
+  TooltipContentItem,
+  WalkthroughContentItem
 } from "../content/ContentItem";
 import { validateContentBundle } from "../content/ContentValidation";
 import { createNoopRuntimeLogger } from "../runtime/RuntimeLogger";
@@ -22,18 +23,21 @@ import {
   type RendererResult
 } from "./RendererResult";
 import { TooltipRenderer } from "./TooltipRenderer";
+import { WalkthroughRenderer } from "./WalkthroughRenderer";
 
 export class Renderer {
   private readonly anchorResolver: AnchorResolver;
   private readonly tooltipRenderer: TooltipRenderer;
   private readonly bannerRenderer: BannerRenderer;
   private readonly checklistRenderer: ChecklistRenderer;
+  private readonly walkthroughRenderer: WalkthroughRenderer;
 
   public constructor(private readonly options: RendererOptions = {}) {
     this.anchorResolver = options.anchorResolver ?? new AnchorResolver();
     this.tooltipRenderer = new TooltipRenderer();
     this.bannerRenderer = new BannerRenderer();
     this.checklistRenderer = new ChecklistRenderer();
+    this.walkthroughRenderer = new WalkthroughRenderer();
   }
 
   public render(bundle: ContentBundle): RendererResult {
@@ -124,6 +128,10 @@ export class Renderer {
       return success(item);
     }
 
+    if (item.type === "walkthrough") {
+      return this.renderWalkthrough(item, container, domDocument);
+    }
+
     return unsupported(item);
   }
 
@@ -148,6 +156,36 @@ export class Renderer {
     }
 
     this.tooltipRenderer.render(item, anchorResult.element, container, domDocument);
+    return success(item);
+  }
+
+  private renderWalkthrough(
+    item: WalkthroughContentItem,
+    container: RendererContainer,
+    domDocument: Document
+  ): RendererItemResult {
+    if (item.walkthrough === undefined || item.walkthrough.steps.length === 0) {
+      return unsupported(item);
+    }
+
+    const anchorOptions = this.options.root === undefined
+      ? {}
+      : {
+          root: this.options.root
+        };
+
+    for (const step of item.walkthrough.steps) {
+      if (step.anchor === undefined) {
+        continue;
+      }
+
+      const anchorResult = this.anchorResolver.resolve(step.anchor, anchorOptions);
+      if (!anchorResult.ok) {
+        return anchorFailure(item, anchorResult);
+      }
+    }
+
+    this.walkthroughRenderer.render(item, container, domDocument);
     return success(item);
   }
 }

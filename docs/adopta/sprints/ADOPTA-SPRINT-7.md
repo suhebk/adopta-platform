@@ -159,3 +159,69 @@ rg "innerHTML|XPath|screen-coordinate|text matching|querySelector\(|\.value|Form
 ### Next recommended slice
 
 Add walkthrough renderer foundation using the approved walkthrough contracts, keeping analytics, event transport, targeting evaluation, backend/API changes, persistence changes, external storage, Property MTD integration, and production infrastructure out of scope until separately approved.
+
+## Slice 3 - Walkthrough renderer foundation
+
+### Requirement IDs covered
+
+- `FR-AUT-010` - Added runtime walkthrough rendering foundation for ordered, multi-step guidance.
+- `FR-DEL-014` - Kept walkthrough output isolated to SDK-owned nodes with explicit teardown.
+- `FR-DEL-015` - Preserved fail-safe renderer behaviour for invalid anchors and renderer errors.
+- `NFR-A11Y-1` - Added accessible walkthrough region semantics and keyboard-reachable native controls.
+- `NFR-PRIV-1` - Avoided field values, form values, host DOM text, tokens, headers, claims, secrets, connection strings, tax/HMRC/property data, and user-entered sensitive values.
+- `NFR-TEST-1` - Added TypeScript renderer coverage for walkthrough rendering, local navigation, anchor failures, teardown, raw-markup safety, and privacy guardrails.
+
+### Scope delivered
+
+- Added `WalkthroughRenderer` as a runtime SDK renderer peer to tooltip, banner/callout, and checklist renderers.
+- Rendered rich walkthrough steps from the approved walkthrough contract.
+- Added local in-memory previous/next navigation between steps.
+- Added progress text in the form `Step n of m`.
+- Added native previous, next, and dismiss button controls with accessible labels.
+- Added Escape dismissal using the existing renderer pattern.
+- Kept placeholder walkthrough items valid and skipped until rich walkthrough steps are present.
+- Preflighted optional step anchors through the existing `data-adopt-id` anchor resolver only.
+- Preserved tooltip, callout/banner, and checklist renderer behaviour.
+
+### Renderer assumptions
+
+Walkthrough state is local to the rendered SDK-owned surface. The current step index is stored only in closure state and is lost on unmount or re-render.
+
+Walkthrough rendering uses a single SDK-owned surface and updates the current step text, progress text, and control state in place. It does not mutate host application nodes beyond appending/removing the SDK-owned surface.
+
+Optional step anchors are validated with the existing `data-adopt-id` anchor resolver before the walkthrough surface is rendered. Missing, duplicate, or unresolvable step anchors fail safely and do not reveal host page details.
+
+Placeholder walkthrough items without rich steps remain valid but are skipped safely for compatibility.
+
+### Accessibility behaviour
+
+- Walkthrough container uses an accessible labelled region.
+- Previous, next, and dismiss controls are native buttons.
+- Controls expose accessible labels.
+- Previous/next availability is exposed through `aria-disabled` and an SDK-owned state attribute.
+- Escape dismissal follows the existing renderer pattern.
+- No autofocus, focus trap, or animation is introduced.
+
+### Commands to run
+
+```powershell
+pnpm typecheck
+pnpm build
+pnpm test
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "innerHTML|XPath|screen-coordinate|text matching|querySelector\(|\.value|FormData|localStorage|sessionStorage|Authorization|Bearer|Password|ConnectionString|HMRC|tax|property|secret|token|claim" packages/runtime-sdk/src/rendering packages/runtime-sdk/tests/renderer.test.ts
+```
+
+### Known limitations
+
+- Walkthrough state is local only and not persisted.
+- Walkthrough navigation does not evaluate targeting, branching, completion rules, or advance triggers.
+- Walkthrough placement/theme tokens are not interpreted yet.
+- No analytics, event transport, backend/API change, persistence change, external storage, CDN/Blob Storage publishing, Property MTD integration, migration execution, database creation, or deployment automation was added.
+
+### Next recommended slice
+
+Add renderer placement and theme token interpretation for the existing tooltip, callout/banner, checklist, and walkthrough foundations, keeping targeting evaluation, analytics, event transport, backend/API changes, persistence changes, external storage, Property MTD integration, and production infrastructure out of scope until separately approved.
