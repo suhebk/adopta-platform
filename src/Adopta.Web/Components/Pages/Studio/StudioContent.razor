@@ -1,5 +1,6 @@
 @page "/studio/content"
 @using Adopta.Web.Studio
+@inject IStudioContentClient StudioContentClient
 
 <PageTitle>Authored Content</PageTitle>
 
@@ -184,9 +185,18 @@
         StudioContentLifecycleState.Archived
     ];
 
-    private readonly StudioContentPageModel Model = StudioContentFoundationData.Loaded();
+    private StudioContentPageModel Model = StudioContentFoundationData.Loading();
 
     private StudioContentListItem? SelectedContent => Model.SelectedContent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await StudioContentClient.ListAsync(
+            new StudioContentListRequest(),
+            CancellationToken.None);
+
+        Model = ToPageModel(result);
+    }
 
     private static string FormatLifecycle(StudioContentLifecycleState state) =>
         state switch
@@ -197,4 +207,27 @@
 
     private static string GetStatusClass(StudioContentLifecycleState state) =>
         $"studio-content__status studio-content__status--{state.ToString().ToLowerInvariant()}";
+
+    private static StudioContentPageModel ToPageModel(
+        StudioContentClientResult<StudioContentPageModel> result) =>
+        result.Status switch
+        {
+            StudioContentClientStatus.Success when result.Value is not null => result.Value,
+            StudioContentClientStatus.Unauthorized => StudioContentFoundationData.NotAuthorized() with
+            {
+                SafeMessage = result.SafeMessage
+            },
+            StudioContentClientStatus.Forbidden => StudioContentFoundationData.NotAuthorized() with
+            {
+                SafeMessage = result.SafeMessage
+            },
+            StudioContentClientStatus.NotFound => StudioContentFoundationData.Empty() with
+            {
+                SafeMessage = result.SafeMessage
+            },
+            _ => StudioContentFoundationData.Error() with
+            {
+                SafeMessage = result.SafeMessage
+            }
+        };
 }

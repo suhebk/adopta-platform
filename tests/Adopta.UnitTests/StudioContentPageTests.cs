@@ -70,6 +70,7 @@ public sealed class StudioContentPageTests
         var markup = ReadRepositoryFile("src/Adopta.Web/Components/Pages/Studio/StudioContent.razor");
 
         Assert.Contains("@page \"/studio/content\"", markup, StringComparison.Ordinal);
+        Assert.Contains("@inject IStudioContentClient StudioContentClient", markup, StringComparison.Ordinal);
         Assert.Contains("aria-labelledby=\"studio-content-title\"", markup, StringComparison.Ordinal);
         Assert.Contains("<table class=\"studio-content__table\">", markup, StringComparison.Ordinal);
         Assert.Contains("<caption>Authored content metadata</caption>", markup, StringComparison.Ordinal);
@@ -78,6 +79,17 @@ public sealed class StudioContentPageTests
         Assert.Contains("Audit and history summary", markup, StringComparison.Ordinal);
         Assert.Contains("Not authorized", markup, StringComparison.Ordinal);
         Assert.Contains("Loading content", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Studio_content_page_uses_client_boundary_for_loaded_data()
+    {
+        var markup = ReadRepositoryFile("src/Adopta.Web/Components/Pages/Studio/StudioContent.razor");
+
+        Assert.Contains("StudioContentClient.ListAsync", markup, StringComparison.Ordinal);
+        Assert.Contains("new StudioContentListRequest()", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("StudioContentFoundationData.Loaded()", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("HttpClient", markup, StringComparison.Ordinal);
     }
 
     [Fact]
