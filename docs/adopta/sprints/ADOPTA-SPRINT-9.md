@@ -487,3 +487,129 @@ Results:
 ### Next recommended slice
 
 Add controlled deployment/environment configuration guidance and, only after approved secure settings exist, validate read-only Studio API activation in an integration-style environment. Keep live write/workflow/publish activation separately approved.
+
+## Slice 5 - Read-only Studio API configuration readiness and Sprint 9 closeout
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Documented secure Web authentication configuration prerequisites for future read-only Studio API activation.
+- `FR-IDN-005` - Documented downstream API access acquisition prerequisites and scope requirements.
+- `FR-IDN-012` - Reconfirmed that Web does not supply tenant IDs and tenant resolution remains API-side.
+- `FR-IDN-031` - Reconfirmed that `X-Adopta-Test-*` is not a production shortcut.
+- `FR-GOV-002` - Closed Sprint 9 around controlled read-only authoring API integration readiness.
+- `NFR-SEC-1` - Documented disabled-by-default and fail-closed activation behaviour.
+- `NFR-SEC-2` - Added guardrail tests proving readiness docs avoid obvious secret markers.
+- `NFR-TEST-1` - Added documentation completeness tests for configuration readiness and Sprint 9 closeout.
+
+### Scope delivered
+
+- Added `docs/adopta/studio/STUDIO-READ-API-ACTIVATION-READINESS.md`.
+- Added documentation guardrail tests for readiness coverage and secret-marker avoidance.
+- Updated the documentation index to reference the Studio read API activation readiness guide.
+- Added Sprint 9 closeout status and checklist.
+- No production code changes were required.
+
+### Readiness summary
+
+Sprint 9 now has a complete controlled path for future read-only Studio API activation:
+
+- The Web UI still depends on `IStudioContentClient`.
+- `LocalStudioContentClient` remains the safe default and fallback.
+- `StudioAuthoringReadApiClient` remains the read-only API implementation.
+- `StudioReadApiActivationValidator` remains the activation readiness validator.
+- `AddStudioReadApiActivationGate` keeps activation disabled by default and fail-closed.
+- `StudioApiRequestBoundaryHandler` remains the only request boundary that can attach Authorization.
+
+The readiness guide documents the secure configuration keys and prerequisites using placeholders only:
+
+- `StudioApi:Enabled`
+- `StudioApi:BaseAddress`
+- `Authentication:StudioWeb:Enabled`
+- `Authentication:StudioWeb:Authority`
+- `Authentication:StudioWeb:ClientId`
+- `Authentication:StudioWeb:CallbackPath`
+- `StudioApi:TokenAcquisition:Enabled`
+- `StudioApi:TokenAcquisition:Scopes`
+
+### Explicitly not built
+
+- Live Studio read activation by default.
+- Live create draft.
+- Live update draft.
+- Live request review.
+- Live approve.
+- Live reject.
+- Live publish.
+- Production appsettings values.
+- Real secrets.
+- Backend API changes.
+- EF migrations.
+- Database schema changes.
+- Deployment automation.
+- Analytics.
+- AI assistant.
+- Event Hubs.
+- ClickHouse.
+- Browser extension.
+- Property MTD integration.
+
+### Sprint 9 closeout checklist
+
+- [x] Inactive Studio read API client seam added.
+- [x] Web-to-API auth and tenant boundary added.
+- [x] Disabled-by-default Web auth/token acquisition seam added.
+- [x] Explicit read-only Studio API activation gate added.
+- [x] Configuration readiness guide added.
+- [x] Readiness documentation guardrail tests added.
+- [x] `LocalStudioContentClient` remains default unless activation prerequisites pass.
+- [x] `StudioAuthoringReadApiClient` remains read-only.
+- [x] No real production secrets or appsettings activation values are committed.
+- [x] No live write/workflow/publish API wiring is enabled.
+- [x] Tenant/test header shortcuts remain blocked for production Web paths.
+
+### Sprint 9 closeout status
+
+Sprint 9 is ready to close at the controlled authenticated Studio API integration readiness level.
+
+The platform is ready for a future environment-level validation slice where secure environment configuration can be supplied outside repository files. That future slice should validate read-only activation in a controlled environment and keep live write/workflow/publish activation separately approved.
+
+### Commands run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+rg "X-Adopta-Tenant-Id|X-Adopta-Test-" src/Adopta.Web -g "!src/Adopta.Web/Studio/StudioApiRequestBoundaryHandler.cs" -g "!**/bin/**" -g "!**/obj/**"
+rg "PostAsync|PutAsync|PatchAsync|DeleteAsync|/request-review|/approve|/reject|/publish" src/Adopta.Web/Studio/StudioAuthoringReadApiClient.cs
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+```
+
+Results:
+
+- `dotnet test Adopta.slnx` passed after restore completed with package feed access: 315 unit tests and 90 integration tests.
+- `dotnet test Adopta.slnx --no-restore` passed: 315 unit tests and 90 integration tests.
+- `dotnet build Adopta.slnx --configuration Release --no-restore` passed with 0 warnings and 0 errors.
+- `dotnet test Adopta.slnx --configuration Release --no-build` passed: 315 unit tests and 90 integration tests.
+- `pnpm typecheck`, `pnpm build`, and `pnpm test` passed.
+- No legacy .NET 9 target references were found.
+- No Web tenant/test header forwarding was added outside the existing request boundary handler.
+- No live write/workflow/publish routes were added.
+- No migration execution, database creation, startup mutation, live DB connectivity, or health-check registrations were added.
+- No appsettings changes or real secrets were added.
+
+### Known limitations
+
+- Live Studio reads are not activated by default.
+- No production authentication or API values are committed.
+- Web sign-in UI remains unimplemented.
+- Future read-only activation requires secure environment configuration.
+- Live write/workflow/publish integration remains out of scope and separately approval-gated.
+
+### Next recommended sprint
+
+Start Sprint 10 with controlled environment validation for read-only Studio API activation, or move into live authoring workflow API integration only after secure sign-in, token acquisition, and operational activation runbooks are approved.
