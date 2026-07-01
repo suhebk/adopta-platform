@@ -64,6 +64,8 @@ Before enabling read-only activation in an environment:
 13. Confirm no Web page or request model supplies tenant IDs.
 14. Confirm Web production code does not add `X-Adopta-Tenant-Id`.
 15. Confirm Web production code does not add or forward `X-Adopta-Test-*`.
+16. Run the controlled activation rehearsal in `STUDIO-READ-API-ACTIVATION-REHEARSAL.md`.
+17. Confirm rollback/fail-closed behaviour returns the Web app to the local client.
 
 ## Default And Fail-Closed Behaviour
 
@@ -87,6 +89,22 @@ Valid external configuration behaviour:
 - `StudioReadApiPreflightService` can report ready.
 - `IStudioContentClient` can resolve to `StudioAuthoringReadApiClient`.
 - Only read-only list/get API operations are available.
+
+## Activation Rehearsal
+
+The controlled activation rehearsal is documented in `docs/adopta/studio/STUDIO-READ-API-ACTIVATION-REHEARSAL.md`.
+
+The rehearsal uses only in-memory configuration, a fake server-side access provider, and a fake capturing HTTP transport. It proves the activated read-only client path without committing environment values or performing network calls.
+
+The rehearsal must confirm:
+
+- `IStudioContentClient` resolves to `StudioAuthoringReadApiClient` only for valid explicit configuration.
+- The activated client calls only `GET /authoring/content` and `GET /authoring/content/{contentId}`.
+- Access is attached only through `StudioApiRequestBoundaryHandler`.
+- Tenant/test headers are stripped or absent before forwarding.
+- Disabled or invalid configuration resolves to `LocalStudioContentClient`.
+- Write/workflow/publish operations remain unavailable.
+- No live network call is made.
 
 ## Rollback
 
