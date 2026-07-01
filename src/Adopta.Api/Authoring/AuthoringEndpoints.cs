@@ -96,23 +96,40 @@ public static class AuthoringEndpoints
         Guid contentId,
         IAdoptionTenantContext tenantContext,
         IAuthoredContentRepository repository,
+        IAuthoredContentLifecycleHistoryRepository lifecycleHistoryRepository,
+        IAuthoredContentPublishingHistoryRepository publishingHistoryRepository,
         CancellationToken cancellationToken)
     {
         var content = await repository.GetByIdAsync(tenantContext.TenantId, contentId, cancellationToken);
+        if (content is null)
+        {
+            return Results.NotFound(CommandFailed("not_found", [Issue("authored_content_not_found", "content", "Authored content was not found.")]));
+        }
 
-        return content is null
-            ? Results.NotFound(CommandFailed("not_found", [Issue("authored_content_not_found", "content", "Authored content was not found.")]))
-            : Results.Ok(ToResponse(content));
+        var lifecycleHistory = await lifecycleHistoryRepository.ListAsync(cancellationToken);
+        var publishingHistory = await publishingHistoryRepository.ListAsync(cancellationToken);
+
+        return Results.Ok(ToResponse(
+            content,
+            BuildReadSummary(content.TenantId, content.Id, lifecycleHistory, publishingHistory)));
     }
 
     private static async Task<IResult> ListAsync(
         IAdoptionTenantContext tenantContext,
         IAuthoredContentRepository repository,
+        IAuthoredContentLifecycleHistoryRepository lifecycleHistoryRepository,
+        IAuthoredContentPublishingHistoryRepository publishingHistoryRepository,
         CancellationToken cancellationToken)
     {
         var content = await repository.ListAsync(tenantContext.TenantId, cancellationToken);
+        var lifecycleHistory = await lifecycleHistoryRepository.ListAsync(cancellationToken);
+        var publishingHistory = await publishingHistoryRepository.ListAsync(cancellationToken);
 
-        return Results.Ok(new AuthoredContentListResponse(content.Select(ToResponse).ToArray()));
+        return Results.Ok(new AuthoredContentListResponse(content
+            .Select(item => ToResponse(
+                item,
+                BuildReadSummary(item.TenantId, item.Id, lifecycleHistory, publishingHistory)))
+            .ToArray()));
     }
 
     private static Task<IResult> RequestReviewAsync(
@@ -365,7 +382,9 @@ public static class AuthoringEndpoints
         return userMapping.User?.Id ?? Guid.Empty;
     }
 
-    private static AuthoredContentResponse ToResponse(AuthoredContentItem content)
+    private static AuthoredContentResponse ToResponse(
+        AuthoredContentItem content,
+        AuthoredContentReadSummaryResponse? summary = null)
     {
         return new AuthoredContentResponse(
             content.Id,
@@ -373,7 +392,8 @@ public static class AuthoringEndpoints
             content.ApplicationId,
             content.ContentKey,
             content.Title,
-            content.Versions.Select(ToVersionResponse).ToArray());
+            content.Versions.Select(ToVersionResponse).ToArray(),
+            summary);
     }
 
     private static AuthoredContentVersionResponse ToVersionResponse(AuthoredContentVersion version)
@@ -427,6 +447,104 @@ public static class AuthoringEndpoints
                 audit.Channel,
                 audit.Result,
                 audit.OccurredAtUtc);
+    }
+
+    private static AuthoredContentReadSummaryResponse BuildReadSummary(
+        Guid tenantId,
+        Guid contentId,
+        IReadOnlyCollection<AuthoredContentLifecycleAuditRecord> lifecycleHistory,
+        IReadOnlyCollection<AuthoredContentPublishingAuditRecord> publishingHistory)
+    {
+        var lifecycleRecords = lifecycleHistory
+            .Where(record => record.TenantId == tenantId && record.ContentId == contentId)
+            .ToArray();
+        var publishingRecords = publishingHistory
+            .Where(record => record.TenantId == tenantId && record.ContentId == contentId)
+            .ToArray();
+        var latestLifecycle = lifecycleRecords
+            .OrderByDescending(record => record.OccurredAtUtc)
+            .FirstOrDefault();
+        var latestPublish = publishingRecords
+            .OrderByDescending(record => record.OccurredAtUtc)
+            .FirstOrDefault();
+
+        return new AuthoredContentReadSummaryResponse(
+            lifecycleRecords.Length,
+            publishingRecords.Length,
+            ResolveLatestSafeActivity(latestLifecycle, latestPublish),
+            ResolveLatestActivityAtUtc(latestLifecycle, latestPublish),
+            latestPublish is null ? null : ToLatestPublishSummary(latestPublish));
+    }
+
+    private static string ResolveLatestSafeActivity(
+        AuthoredContentLifecycleAuditRecord? lifecycle,
+        AuthoredContentPublishingAuditRecord? publish)
+    {
+        if (publish is not null &&
+            (lifecycle is null || publish.OccurredAtUtc >= lifecycle.OccurredAtUtc))
+        {
+            return "Published to runtime delivery";
+        }
+
+        if (lifecycle is null)
+        {
+            return "No lifecycle or publishing history available.";
+        }
+
+        return lifecycle.LifecycleAction switch
+        {
+            "RequestReview" => "Review requested",
+            "Approve" => "Approved for publishing",
+            "Reject" => "Returned to draft",
+            _ => "Lifecycle decision recorded"
+        };
+    }
+
+    private static DateTimeOffset? ResolveLatestActivityAtUtc(
+        AuthoredContentLifecycleAuditRecord? lifecycle,
+        AuthoredContentPublishingAuditRecord? publish)
+    {
+        return (lifecycle, publish) switch
+        {
+            (null, null) => null,
+            ({ } lifecycleRecord, null) => lifecycleRecord.OccurredAtUtc,
+            (null, { } publishRecord) => publishRecord.OccurredAtUtc,
+            ({ } lifecycleRecord, { } publishRecord) => publishRecord.OccurredAtUtc >= lifecycleRecord.OccurredAtUtc
+                ? publishRecord.OccurredAtUtc
+                : lifecycleRecord.OccurredAtUtc
+        };
+    }
+
+    private static AuthoredContentLatestPublishSummaryResponse ToLatestPublishSummary(
+        AuthoredContentPublishingAuditRecord audit)
+    {
+        return new AuthoredContentLatestPublishSummaryResponse(
+            ToSafePublishStatus(audit.Result),
+            ToSafeStructuralValue(audit.Environment),
+            audit.Channel,
+            audit.OccurredAtUtc);
+    }
+
+    private static string ToSafePublishStatus(string status)
+    {
+        return string.Equals(status, "Succeeded", StringComparison.Ordinal)
+            ? "Succeeded"
+            : "Recorded";
+    }
+
+    private static string ToSafeStructuralValue(string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.Length is 0 or > 64)
+        {
+            return "unknown";
+        }
+
+        return trimmed.All(static character =>
+            char.IsAsciiLetterOrDigit(character) ||
+            character is '-' or '_' or '.')
+            ? trimmed
+            : "unknown";
     }
 
     private static AuthoringCommandResponse CommandSucceeded(

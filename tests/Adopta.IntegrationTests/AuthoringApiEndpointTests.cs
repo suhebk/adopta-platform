@@ -147,6 +147,119 @@ public sealed class AuthoringApiEndpointTests
     }
 
     [Fact]
+    public async Task List_authored_content_includes_safe_history_summary()
+    {
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringRead);
+        var content = await SeedContentAsync(seed.InternalTenantId, ContentLifecycleState.Published);
+        var version = Assert.Single(content.Versions);
+        var actorUserId = Guid.NewGuid();
+        var lifecycleHistoryRepository = new TestLifecycleHistoryRepository();
+        var publishingHistoryRepository = new TestPublishingHistoryRepository();
+        await lifecycleHistoryRepository.AddAsync(new AuthoredContentLifecycleAuditRecord(
+            seed.InternalTenantId,
+            content.Id,
+            version.Id,
+            actorUserId,
+            "Approve",
+            ContentLifecycleState.InReview,
+            ContentLifecycleState.Approved,
+            "Succeeded",
+            DateTimeOffset.Parse("2026-06-30T10:00:00Z")));
+        await publishingHistoryRepository.AddAsync(new AuthoredContentPublishingAuditRecord(
+            seed.InternalTenantId,
+            content.Id,
+            version.Id,
+            actorUserId,
+            "production",
+            DeliveryChannel.Published,
+            "Succeeded",
+            DateTimeOffset.Parse("2026-06-30T11:00:00Z")));
+        await lifecycleHistoryRepository.AddAsync(new AuthoredContentLifecycleAuditRecord(
+            Guid.NewGuid(),
+            content.Id,
+            version.Id,
+            Guid.NewGuid(),
+            "Reject",
+            ContentLifecycleState.InReview,
+            ContentLifecycleState.Draft,
+            "Succeeded",
+            DateTimeOffset.Parse("2026-06-30T12:00:00Z")));
+
+        using var factory = BuildFactoryWithSeed(
+            seed,
+            lifecycleHistoryRepository,
+            publishingHistoryRepository);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(HttpMethod.Get, "/authoring/content", seed);
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadFromJsonAsync<AuthoredContentListResponse>();
+        var rawBody = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(body);
+        var item = body.Items.Single(candidate => candidate.Id == content.Id);
+        Assert.NotNull(item.Summary);
+        Assert.Equal(1, item.Summary.LifecycleEventCount);
+        Assert.Equal(1, item.Summary.PublishingEventCount);
+        Assert.Equal("Published to runtime delivery", item.Summary.LatestSafeActivity);
+        Assert.Equal(DateTimeOffset.Parse("2026-06-30T11:00:00Z"), item.Summary.LatestActivityAtUtc);
+        Assert.NotNull(item.Summary.LatestPublish);
+        Assert.Equal("Succeeded", item.Summary.LatestPublish.Status);
+        Assert.Equal("production", item.Summary.LatestPublish.Environment);
+        Assert.Equal(DeliveryChannel.Published, item.Summary.LatestPublish.Channel);
+        Assert.DoesNotContain(actorUserId.ToString(), rawBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("Bearer", rawBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Password", rawBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ConnectionString", rawBody, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Get_authored_content_includes_safe_lifecycle_summary()
+    {
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringRead);
+        var content = await SeedContentAsync(seed.InternalTenantId, ContentLifecycleState.Approved);
+        var version = Assert.Single(content.Versions);
+        var actorUserId = Guid.NewGuid();
+        var lifecycleHistoryRepository = new TestLifecycleHistoryRepository();
+        var publishingHistoryRepository = new TestPublishingHistoryRepository();
+        await lifecycleHistoryRepository.AddAsync(new AuthoredContentLifecycleAuditRecord(
+            seed.InternalTenantId,
+            content.Id,
+            version.Id,
+            actorUserId,
+            "Approve",
+            ContentLifecycleState.InReview,
+            ContentLifecycleState.Approved,
+            "Succeeded",
+            DateTimeOffset.Parse("2026-06-30T10:00:00Z")));
+
+        using var factory = BuildFactoryWithSeed(
+            seed,
+            lifecycleHistoryRepository,
+            publishingHistoryRepository);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(HttpMethod.Get, $"/authoring/content/{content.Id}", seed);
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadFromJsonAsync<AuthoredContentResponse>();
+        var rawBody = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(body);
+        Assert.NotNull(body.Summary);
+        Assert.Equal(1, body.Summary.LifecycleEventCount);
+        Assert.Equal(0, body.Summary.PublishingEventCount);
+        Assert.Equal("Approved for publishing", body.Summary.LatestSafeActivity);
+        Assert.Equal(DateTimeOffset.Parse("2026-06-30T10:00:00Z"), body.Summary.LatestActivityAtUtc);
+        Assert.Null(body.Summary.LatestPublish);
+        Assert.DoesNotContain(actorUserId.ToString(), rawBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("Bearer", rawBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Password", rawBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ConnectionString", rawBody, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task Request_review_requires_review_permission()
     {
         var allowed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringReview);

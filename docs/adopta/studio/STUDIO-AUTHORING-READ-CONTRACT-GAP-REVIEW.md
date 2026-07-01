@@ -21,9 +21,9 @@ The live Studio read path is intentionally narrow:
 | Content type | Missing from authoring read API and authoring domain source of truth. | Keep marked unknown in Web mapping. Full fix requires separate domain/API/create-update/schema approval. |
 | Lifecycle state | Available through version lifecycle state. | No backend change needed for Slice 1. |
 | Version metadata | Basic version ID, version string, lifecycle state, and created timestamp are available. | Usable for current UI; richer timestamps require future read-summary work. |
-| Audit/history summary | Not exposed by authoring read response. | Keep safe fallback summary. Future Slice 2 can add read-only summary from existing history repositories. |
+| Audit/history summary | Exposed as a safe read-only summary from existing lifecycle and publishing history repositories. | Use structural counts, controlled labels, and timestamps only. Keep fallback behaviour for older/absent responses. |
 | Application metadata | `ApplicationId` only. No application name in authoring read response. | Keep ID-only until a tenant-scoped application metadata read is approved. |
-| Delivery/publish metadata | Not exposed by authoring read response. | Future read-only structural publish summary can derive from existing publishing history. |
+| Delivery/publish metadata | Latest publish summary is exposed when publishing history exists. | Expose status, safe environment, channel, and timestamp only. Do not expose delivery bundle contents. |
 
 ## Content Type Gap
 
@@ -69,7 +69,7 @@ The current API provides basic version metadata:
 
 The Studio can safely display this metadata. It cannot yet show richer operational timestamps such as modified, review requested, approved, published, or archived timestamps unless those are derived from future read-summary support.
 
-## Audit And History Summary Gap
+## Audit And History Summary Status
 
 The Studio read model expects:
 
@@ -78,11 +78,19 @@ The Studio read model expects:
 - latest safe activity;
 - latest activity timestamp.
 
-The current authoring read API does not expose this summary. The Web mapper currently uses a safe fallback summary that states metadata is limited.
+The authoring read API now exposes this summary as `AuthoredContentReadSummaryResponse` where the metadata can be derived from existing lifecycle and publishing history repositories.
 
-Existing lifecycle and publishing history repositories may support a future read-only summary without schema changes, but the read endpoint does not currently compose that summary.
+The summary is structural only:
 
-Future work should keep history responses structural only and avoid raw content, claims, headers, configured values, tenant details, or sensitive content.
+- lifecycle history count;
+- publishing history count;
+- controlled latest activity label;
+- latest activity timestamp;
+- latest publish status/environment/channel/timestamp when publishing history exists.
+
+The Web mapper keeps the existing safe fallback when the API summary is absent.
+
+The response does not expose raw lifecycle records, raw publishing records, actor IDs, claims, headers, configured values, tenant details inside the summary, content body, or sensitive content.
 
 ## Application Metadata Gap
 
@@ -92,17 +100,16 @@ Tenant-scoped application repositories exist, but the authoring read endpoint do
 
 For now, the Studio should continue showing application ID only. A future enhancement can add optional application display metadata if it stays tenant-scoped and non-sensitive.
 
-## Delivery And Publish Metadata Gap
+## Delivery And Publish Metadata Status
 
-The current authoring read response does not include:
+The authoring read response now includes a latest publish summary when publishing history exists:
 
 - latest published environment;
 - latest delivery channel;
 - latest publish timestamp;
 - latest publish result;
-- delivery bundle metadata.
 
-Publishing history exists and can support a future structural read summary. Delivery bundle contents should not be exposed through the authoring read contract unless separately approved.
+The response does not expose delivery bundle contents, runtime bundle payloads, external storage details, or publishing history records directly.
 
 ## Security And Privacy Guardrails
 
@@ -118,12 +125,13 @@ The read contract must continue to preserve these boundaries:
 
 ## Recommended Next Slice
 
-Sprint 11 Slice 2 should add a minimal read-only authoring summary contract only if approved. The safest next step is:
+Sprint 11 Slice 2 added the minimal read-only authoring summary contract without schema changes.
 
-- add explicit read DTO fields for known-safe metadata;
+The next safest step is:
+
 - keep content type unknown until the authoring domain has a source of truth;
-- add lifecycle/publishing summary from existing history repositories if feasible without schema changes;
-- preserve tenant isolation and `Authoring.Read`;
-- add integration tests for missing metadata, safe fallback mapping, and no sensitive content exposure.
+- decide whether application display metadata should be added from the existing tenant-scoped application repository;
+- separately plan content type source-of-truth work if the Studio needs live edit/create parity;
+- preserve tenant isolation and `Authoring.Read`.
 
 Content type source-of-truth work should be planned separately because it is likely domain/API/create-update/schema work.

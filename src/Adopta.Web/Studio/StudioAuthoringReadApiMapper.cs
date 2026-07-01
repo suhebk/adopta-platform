@@ -44,14 +44,33 @@ public static class StudioAuthoringReadApiMapper
             RuntimeContentType.Tooltip,
             lifecycleState,
             versions,
-            new StudioContentHistorySummary(
-                versions.Length,
-                0,
-                "Limited authoring API metadata loaded.",
-                latestActivityAtUtc))
+            MapHistorySummary(response.Summary, versions.Length, latestActivityAtUtc))
         {
             HasKnownContentType = false
         };
+    }
+
+    private static StudioContentHistorySummary MapHistorySummary(
+        StudioAuthoringContentReadSummaryApiResponse? summary,
+        int fallbackLifecycleEventCount,
+        DateTimeOffset? fallbackLatestActivityAtUtc)
+    {
+        if (summary is null)
+        {
+            return new StudioContentHistorySummary(
+                fallbackLifecycleEventCount,
+                0,
+                "Limited authoring API metadata loaded.",
+                fallbackLatestActivityAtUtc);
+        }
+
+        return new StudioContentHistorySummary(
+            summary.LifecycleEventCount,
+            summary.PublishingEventCount,
+            string.IsNullOrWhiteSpace(summary.LatestSafeActivity)
+                ? "Limited authoring API metadata loaded."
+                : summary.LatestSafeActivity.Trim(),
+            summary.LatestActivityAtUtc);
     }
 
     private static StudioContentVersionSummary MapVersion(
