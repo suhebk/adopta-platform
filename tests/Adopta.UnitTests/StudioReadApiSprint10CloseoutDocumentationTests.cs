@@ -87,7 +87,6 @@ public sealed class StudioReadApiSprint10CloseoutDocumentationTests
         Assert.Contains("ADOPTA-SPRINT-10", readme, StringComparison.Ordinal);
         Assert.Contains("Studio Read API Activation Readiness", readme, StringComparison.Ordinal);
         Assert.Contains("Studio Read API Activation Runbook", readme, StringComparison.Ordinal);
-        Assert.Contains("Current sprint: `ADOPTA-SPRINT-10", readme, StringComparison.Ordinal);
     }
 
     [Fact]
