@@ -200,6 +200,22 @@ Controlled environment validation must prove:
 - `X-Adopta-Tenant-Id` is not used by Web production code;
 - `X-Adopta-Test-*` is not used as a production shortcut.
 
+## Operator-Facing Status Surface
+
+The operator-facing status surface is hosted on `/studio/governance`.
+
+The surface:
+
+- uses `StudioReadApiPreflightService` as the only status source;
+- displays only overall status, check code, check status, and generic safe message;
+- does not display configured endpoint values, authority values, client identifiers, scopes, access values, claims, tenant identifiers, option values, or raw failures;
+- does not activate live reads;
+- does not perform network calls;
+- does not enable write/workflow/publish operations;
+- keeps the existing `/studio/governance` navigation permission mapping to `Audit.Read`.
+
+The page is an operational readiness view only. Activation still requires explicit secure environment configuration and remains disabled/fail-closed by default.
+
 ## Sprint 9 Closeout Position
 
 Sprint 9 closes with a controlled, disabled-by-default read API activation path. The platform is ready for a future environment-level validation of read-only Studio API activation, but no live activation values are committed and no write/workflow/publish API integration is enabled.

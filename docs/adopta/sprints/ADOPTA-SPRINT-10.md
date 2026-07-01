@@ -379,3 +379,127 @@ git diff --check
 ### Next recommended slice
 
 Add an operator-facing read API activation status surface only if explicitly approved, using the existing preflight and rehearsal outputs. Keep live write/workflow/publish activation, backend changes, appsettings values, migrations, analytics, AI, deployment automation, and Property MTD integration separately approved.
+
+## Slice 4 - Operator-Facing Read API Activation Status Surface
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Added an operator-facing status surface for future Microsoft Entra backed Studio read activation readiness.
+- `FR-IDN-005` - Reconfirmed access values remain server-side and are not displayed by the status surface.
+- `FR-IDN-012` - Reconfirmed tenant identity remains API-side and is not supplied by Web page models.
+- `FR-IDN-031` - Reused existing preflight guardrails for tenant/test header posture.
+- `FR-GOV-002` - Kept the status surface read-only and non-activating, with workflow/publish operations unavailable.
+- `NFR-SEC-1` - Preserved disabled-by-default and fail-closed activation behaviour.
+- `NFR-SEC-2` - Rendered only safe preflight status, check code, check status, and generic message.
+- `NFR-TEST-1` - Added guardrail tests for safe rendering, navigation permission, non-activation, and no write/workflow/publish actions.
+
+### Scope delivered
+
+- Updated `/studio/governance` with a compact Studio read API activation readiness panel.
+- Used `IStudioReadApiPreflightService` as the only status source.
+- Rendered only:
+  - overall status;
+  - check code;
+  - check status;
+  - generic safe message.
+- Added safe fallback state if readiness cannot be loaded.
+- Preserved the existing `/studio/governance` navigation permission mapping to `Audit.Read`.
+- Added scoped styling for the governance status surface.
+- Added unit/source guardrails for safe rendering and non-activation.
+- Updated readiness and environment validation documentation.
+
+### Status surface design
+
+The status surface is hosted on `/studio/governance` because that route already represents governance visibility and already uses the existing `Audit.Read` permission in Studio navigation metadata.
+
+The page:
+
+- injects `IStudioReadApiPreflightService`;
+- calls `RunAsync` during page initialization;
+- displays overall readiness status;
+- displays preflight check code, status, and generic message;
+- includes an explicit note that it does not activate live reads;
+- includes an explicit note that write/workflow/publish remain unavailable.
+
+### Safe output and redaction behaviour
+
+The status surface does not display:
+
+- configured endpoint values;
+- authority values;
+- client identifiers;
+- scopes;
+- access values;
+- claims;
+- tenant identifiers;
+- option values;
+- secrets;
+- connection strings;
+- raw failures.
+
+The page does not inject configuration, options, `HttpClient`, `IStudioContentClient`, or `StudioAuthoringReadApiClient`.
+
+### Default and fail-closed behaviour
+
+- The activation gate remains disabled by default.
+- Invalid configuration still resolves to `LocalStudioContentClient`.
+- The status surface does not change activation state.
+- The status surface does not call the authoring API.
+- The status surface does not perform network calls.
+
+### Write, workflow, and publish boundaries
+
+The status surface does not add:
+
+- live create draft;
+- live update draft;
+- live request review;
+- live approve;
+- live reject;
+- live publish.
+
+### Explicitly not built
+
+- Live Studio read activation by default.
+- Real network calls.
+- Backend/API changes.
+- Appsettings values.
+- EF migrations.
+- Database schema changes.
+- Deployment automation.
+- Analytics.
+- AI.
+- Event Hubs.
+- ClickHouse.
+- Browser extension work.
+- Property MTD integration.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+git diff -- src/Adopta.Web/appsettings.json src/Adopta.Web/appsettings.Development.json src/Adopta.Api/appsettings.json src/Adopta.Api/appsettings.Development.json
+Run the configured secret-marker guardrail search across source, docs, and config files.
+rg "X-Adopta-Tenant-Id|X-Adopta-Test-" src/Adopta.Web -g "!src/Adopta.Web/Studio/StudioApiRequestBoundaryHandler.cs" -g "!**/bin/**" -g "!**/obj/**"
+rg "PostAsync|PutAsync|PatchAsync|DeleteAsync|/request-review|/approve|/reject|/publish" src/Adopta.Web/Studio/StudioAuthoringReadApiClient.cs
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+git diff --check
+```
+
+### Known limitations
+
+- The status surface is read-only and does not activate Studio API integration.
+- The status surface reports preflight state only; it does not validate a live identity provider or deployed API.
+- Live write/workflow/publish API integration remains separately approval-gated.
+- No appsettings values or environment-specific activation values are committed.
+
+### Next recommended slice
+
+Close Sprint 10 with documentation and guardrail review, or plan the separately approved environment activation procedure. Keep live write/workflow/publish activation, backend changes, appsettings values, migrations, analytics, AI, deployment automation, and Property MTD integration separately approved.
