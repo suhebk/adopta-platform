@@ -1,13 +1,125 @@
 @page "/studio/governance"
 @using Adopta.Web.Studio
+@inject IStudioReadApiPreflightService StudioReadApiPreflightService
 
 <PageTitle>Governance & Audit</PageTitle>
 
-<section class="studio-shell">
-    <p class="eyebrow">@StudioNavigation.FoundationShellStatus</p>
-    <h1>Governance & Audit</h1>
-    <p>
-        Foundation shell for governance and audit visibility. Analytics, dashboards,
-        and durable audit exploration are intentionally out of scope.
-    </p>
+<section class="studio-governance" aria-labelledby="studio-governance-title">
+    <header class="studio-governance__header">
+        <div>
+            <p class="studio-governance__eyebrow">@StudioNavigation.FoundationShellStatus</p>
+            <h1 id="studio-governance-title">Governance & Audit</h1>
+            <p>
+                Operator-facing readiness for governance and controlled Studio API activation.
+                Analytics dashboards and durable audit exploration remain out of scope.
+            </p>
+        </div>
+    </header>
+
+    <section class="studio-governance__panel" aria-labelledby="studio-read-api-status-title">
+        <div class="studio-governance__panel-header">
+            <div>
+                <h2 id="studio-read-api-status-title">Studio read API activation readiness</h2>
+                <p>
+                    Read-only readiness surface sourced from the Studio read API preflight service.
+                </p>
+            </div>
+            <span class="@GetStatusClass()" role="status" aria-live="polite">
+                @GetStatusLabel()
+            </span>
+        </div>
+
+        <div class="studio-governance__notice" role="note">
+            This surface reports readiness only. It does not activate live reads, call the API,
+            change configuration, or enable write, workflow, or publish operations.
+        </div>
+
+        @if (HasPreflightError)
+        {
+            <section class="studio-governance__state studio-governance__state--warning" role="alert">
+                <h3>Readiness unavailable</h3>
+                <p>Studio read API activation readiness could not be loaded.</p>
+            </section>
+        }
+        else if (Preflight is null)
+        {
+            <section class="studio-governance__state" aria-live="polite">
+                <h3>Loading readiness</h3>
+                <p>Studio read API activation readiness is loading.</p>
+            </section>
+        }
+        else
+        {
+            <div class="studio-governance__summary" aria-label="Studio read API readiness summary">
+                <article>
+                    <span>Overall status</span>
+                    <strong>@Preflight.Status</strong>
+                </article>
+                <article>
+                    <span>Checks</span>
+                    <strong>@Preflight.Checks.Count</strong>
+                </article>
+                <article>
+                    <span>Failures</span>
+                    <strong>@Preflight.Checks.Count(check => check.Status == StudioReadApiPreflightCheckStatus.Failed)</strong>
+                </article>
+            </div>
+
+            <div class="studio-governance__table-wrap">
+                <table class="studio-governance__table">
+                    <caption>Studio read API activation readiness checks</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Check code</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var check in Preflight.Checks)
+                        {
+                            <tr>
+                                <th scope="row">@check.Code</th>
+                                <td>
+                                    <span class="@GetCheckStatusClass(check.Status)">
+                                        @check.Status
+                                    </span>
+                                </td>
+                                <td>@check.Message</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
 </section>
+
+@code {
+    private StudioReadApiPreflightResult? Preflight { get; set; }
+
+    private bool HasPreflightError { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Preflight = await StudioReadApiPreflightService.RunAsync(CancellationToken.None);
+        }
+        catch
+        {
+            HasPreflightError = true;
+        }
+    }
+
+    private string GetStatusLabel() =>
+        HasPreflightError
+            ? "Unavailable"
+            : Preflight?.Status.ToString() ?? "Loading";
+
+    private string GetStatusClass() =>
+        $"studio-governance__status studio-governance__status--{GetStatusLabel().ToLowerInvariant()}";
+
+    private static string GetCheckStatusClass(StudioReadApiPreflightCheckStatus status) =>
+        $"studio-governance__check-status studio-governance__check-status--{status.ToString().ToLowerInvariant()}";
+}

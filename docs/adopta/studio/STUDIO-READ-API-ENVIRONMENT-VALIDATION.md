@@ -106,6 +106,22 @@ The rehearsal must confirm:
 - Write/workflow/publish operations remain unavailable.
 - No live network call is made.
 
+## Operator Status Surface
+
+After environment validation and rehearsal checks pass, operators can review read API activation readiness on `/studio/governance`.
+
+The status surface:
+
+- reads from `StudioReadApiPreflightService` only;
+- shows overall status, check code, check status, and generic safe message;
+- does not read configuration directly;
+- does not display endpoint values, authority values, client identifiers, scopes, access values, claims, tenant identifiers, option values, or raw failures;
+- does not activate live reads;
+- does not call the API;
+- does not enable write/workflow/publish operations.
+
+The route continues to use the existing Studio navigation permission mapping for governance visibility.
+
 ## Rollback
 
 Rollback means disabling the activation flag or removing invalid external configuration from the environment.

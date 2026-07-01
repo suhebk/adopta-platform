@@ -35,6 +35,7 @@ Property Income MTD remains undisturbed while its remaining sprints continue. Ad
 | studio | Studio Read API Activation Readiness | Secure configuration and preflight readiness for controlled read-only Studio API activation. |
 | studio | Studio Read API Environment Validation | Placeholder-only environment validation guidance for controlled read-only Studio API activation. |
 | studio | Studio Read API Activation Rehearsal | Test-only activation rehearsal guidance for the read-only Studio API path. |
+| studio | Studio Read API Status Surface | Operator-facing readiness surface for controlled read-only Studio API activation. |
 | sprints | ADOPTA-SPRINT-5 | Controlled production enablement foundations, starting with reviewable EF schema baseline generation. |
 | sprints | ADOPTA-SPRINT-6 | Runtime delivery API and bundle retrieval foundation. |
 | sprints | ADOPTA-SPRINT-8 | Adoption Studio UI foundation, starting with read-only content list and view. |
