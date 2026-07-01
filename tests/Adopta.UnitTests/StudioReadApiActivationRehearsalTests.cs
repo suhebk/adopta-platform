@@ -438,7 +438,8 @@ public sealed class StudioReadApiActivationRehearsalTests
                         "1.0.0",
                         StudioAuthoringLifecycleStateApiResponse.Approved,
                         DateTimeOffset.Parse("2026-06-30T10:00:00Z"))
-                ]);
+                ],
+                null);
 
         private static HttpRequestMessage CloneRequest(HttpRequestMessage request)
         {

@@ -189,7 +189,8 @@ public sealed class StudioAuthoringReadApiClientTests
                     "1.0.0",
                     StudioAuthoringLifecycleStateApiResponse.Approved,
                     DateTimeOffset.Parse("2026-06-30T10:00:00Z"))
-            ]);
+            ],
+            null);
     }
 
     private static void AssertNoTenantInput(HttpRequestMessage? request)

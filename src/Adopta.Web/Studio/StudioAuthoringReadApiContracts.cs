@@ -1,3 +1,5 @@
+using Adopta.Application.Runtime;
+
 namespace Adopta.Web.Studio;
 
 public sealed record StudioAuthoringContentApiResponse(
@@ -6,7 +8,8 @@ public sealed record StudioAuthoringContentApiResponse(
     Guid ApplicationId,
     string ContentKey,
     string Title,
-    IReadOnlyCollection<StudioAuthoringContentVersionApiResponse> Versions);
+    IReadOnlyCollection<StudioAuthoringContentVersionApiResponse> Versions,
+    StudioAuthoringContentReadSummaryApiResponse? Summary);
 
 public sealed record StudioAuthoringContentVersionApiResponse(
     Guid Id,
@@ -16,6 +19,19 @@ public sealed record StudioAuthoringContentVersionApiResponse(
 
 public sealed record StudioAuthoringContentListApiResponse(
     IReadOnlyCollection<StudioAuthoringContentApiResponse> Items);
+
+public sealed record StudioAuthoringContentReadSummaryApiResponse(
+    int LifecycleEventCount,
+    int PublishingEventCount,
+    string LatestSafeActivity,
+    DateTimeOffset? LatestActivityAtUtc,
+    StudioAuthoringLatestPublishSummaryApiResponse? LatestPublish);
+
+public sealed record StudioAuthoringLatestPublishSummaryApiResponse(
+    string Status,
+    string Environment,
+    DeliveryChannel Channel,
+    DateTimeOffset OccurredAtUtc);
 
 public enum StudioAuthoringLifecycleStateApiResponse
 {

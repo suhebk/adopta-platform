@@ -15,7 +15,8 @@ public sealed record AuthoredContentResponse(
     Guid ApplicationId,
     string ContentKey,
     string Title,
-    IReadOnlyCollection<AuthoredContentVersionResponse> Versions);
+    IReadOnlyCollection<AuthoredContentVersionResponse> Versions,
+    AuthoredContentReadSummaryResponse? Summary);
 
 public sealed record AuthoredContentVersionResponse(
     Guid Id,
@@ -25,6 +26,19 @@ public sealed record AuthoredContentVersionResponse(
 
 public sealed record AuthoredContentListResponse(
     IReadOnlyCollection<AuthoredContentResponse> Items);
+
+public sealed record AuthoredContentReadSummaryResponse(
+    int LifecycleEventCount,
+    int PublishingEventCount,
+    string LatestSafeActivity,
+    DateTimeOffset? LatestActivityAtUtc,
+    AuthoredContentLatestPublishSummaryResponse? LatestPublish);
+
+public sealed record AuthoredContentLatestPublishSummaryResponse(
+    string Status,
+    string Environment,
+    DeliveryChannel Channel,
+    DateTimeOffset OccurredAtUtc);
 
 public sealed record RequestReviewRequest(
     DateTimeOffset? RequestedAtUtc);

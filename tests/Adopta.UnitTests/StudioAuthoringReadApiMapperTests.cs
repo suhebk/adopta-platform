@@ -49,6 +49,30 @@ public sealed class StudioAuthoringReadApiMapperTests
     }
 
     [Fact]
+    public void Mapper_uses_authoring_read_summary_when_present()
+    {
+        var latest = DateTimeOffset.Parse("2026-06-30T11:00:00Z");
+        var response = BuildContentResponse(summary: new StudioAuthoringContentReadSummaryApiResponse(
+            4,
+            2,
+            "Published to runtime delivery",
+            latest,
+            new StudioAuthoringLatestPublishSummaryApiResponse(
+                "Succeeded",
+                "production",
+                DeliveryChannel.Published,
+                latest)));
+
+        var item = StudioAuthoringReadApiMapper.MapItem(response);
+
+        Assert.Equal(4, item.History.LifecycleEventCount);
+        Assert.Equal(2, item.History.PublishingEventCount);
+        Assert.Equal("Published to runtime delivery", item.History.LatestSafeActivity);
+        Assert.Equal(latest, item.History.LatestActivityAtUtc);
+        Assert.False(item.HasKnownContentType);
+    }
+
+    [Fact]
     public void Mapper_maps_list_and_filters_by_application()
     {
         var applicationA = Guid.NewGuid();
@@ -80,7 +104,8 @@ public sealed class StudioAuthoringReadApiMapperTests
 
     private static StudioAuthoringContentApiResponse BuildContentResponse(
         Guid? applicationId = null,
-        string title = "Welcome tooltip")
+        string title = "Welcome tooltip",
+        StudioAuthoringContentReadSummaryApiResponse? summary = null)
     {
         var latest = DateTimeOffset.Parse("2026-06-30T10:00:00Z");
         var earlier = DateTimeOffset.Parse("2026-06-29T10:00:00Z");
@@ -102,6 +127,7 @@ public sealed class StudioAuthoringReadApiMapperTests
                     "1.0.0",
                     StudioAuthoringLifecycleStateApiResponse.Approved,
                     latest)
-            ]);
+            ],
+            summary);
     }
 }

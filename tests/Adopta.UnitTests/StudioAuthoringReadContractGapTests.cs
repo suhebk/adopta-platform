@@ -21,14 +21,21 @@ public sealed class StudioAuthoringReadContractGapTests
     }
 
     [Fact]
-    public void Live_authoring_read_api_contract_does_not_expose_history_summary()
+    public void Live_authoring_read_api_contract_exposes_safe_summary_without_raw_history_records()
     {
         var contractSource = ReadRepositoryFile("src/Adopta.Api/Authoring/AuthoringApiContracts.cs");
 
-        Assert.DoesNotContain("HistorySummary", contractSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("LifecycleEventCount", contractSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("PublishingEventCount", contractSource, StringComparison.Ordinal);
-        Assert.DoesNotContain("LatestSafeActivity", contractSource, StringComparison.Ordinal);
+        Assert.Contains("AuthoredContentReadSummaryResponse? Summary", contractSource, StringComparison.Ordinal);
+        Assert.Contains("LifecycleEventCount", contractSource, StringComparison.Ordinal);
+        Assert.Contains("PublishingEventCount", contractSource, StringComparison.Ordinal);
+        Assert.Contains("LatestSafeActivity", contractSource, StringComparison.Ordinal);
+        var summaryContract = contractSource[
+            contractSource.IndexOf("public sealed record AuthoredContentReadSummaryResponse", StringComparison.Ordinal)..
+            contractSource.IndexOf("public sealed record RequestReviewRequest", StringComparison.Ordinal)];
+
+        Assert.DoesNotContain("ActorUserId", summaryContract, StringComparison.Ordinal);
+        Assert.DoesNotContain("AuthoredContentLifecycleAuditRecord", contractSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("AuthoredContentPublishingAuditRecord", contractSource, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -158,7 +165,8 @@ public sealed class StudioAuthoringReadContractGapTests
                     "1.0.0",
                     StudioAuthoringLifecycleStateApiResponse.Approved,
                     DateTimeOffset.Parse("2026-06-30T10:00:00Z"))
-            ]);
+            ],
+            null);
     }
 
     private static void AssertSafeText(string text)
