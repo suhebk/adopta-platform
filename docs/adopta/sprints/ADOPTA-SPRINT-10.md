@@ -257,3 +257,125 @@ git diff --check
 ### Next recommended slice
 
 Add a controlled operator-facing read API activation status surface or diagnostics endpoint only if explicitly approved. Keep live write/workflow/publish activation, backend changes, appsettings values, migrations, analytics, AI, deployment automation, and Property MTD integration separately approved.
+
+## Slice 3 - Controlled Read-Only Studio API Activation Rehearsal
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Added a controlled rehearsal for future Microsoft Entra backed Studio read activation without live environment values.
+- `FR-IDN-005` - Reconfirmed that access values remain server-side and are supplied only by a test fake provider in rehearsal.
+- `FR-IDN-012` - Reconfirmed that Web does not supply tenant IDs and tenant resolution remains API-side.
+- `FR-IDN-031` - Added rehearsal coverage for tenant/test header stripping at the Web-to-API request boundary.
+- `FR-GOV-002` - Proved the activated read client remains read-only and keeps workflow/publish operations unavailable.
+- `NFR-SEC-1` - Reconfirmed disabled and invalid activation fall back to local/fail-closed behaviour.
+- `NFR-SEC-2` - Added tests and documentation proving rehearsal output avoids access value exposure.
+- `NFR-TEST-1` - Added test-only activation rehearsal coverage with fake transport and fake server-side access provider.
+
+### Scope delivered
+
+- Added `docs/adopta/studio/STUDIO-READ-API-ACTIVATION-REHEARSAL.md`.
+- Added unit tests for the controlled activation rehearsal.
+- Exercised the real `AddStudioReadApiActivationGate` activation path.
+- Exercised the real `StudioAuthoringReadApiClient` typed client pipeline.
+- Exercised the real `StudioApiRequestBoundaryHandler`.
+- Used valid in-memory configuration only.
+- Used a fake server-side access provider only in tests.
+- Used a fake capturing HTTP transport only in tests.
+- Updated the environment validation guide with rehearsal and rollback validation.
+- Updated this Sprint 10 document with Slice 3 scope and guardrails.
+- Updated the documentation index.
+
+### Rehearsal design
+
+The activation rehearsal is a test-only path. It builds the Web Studio service collection with valid in-memory activation configuration, then injects:
+
+- a fake server-side access provider;
+- a fake capturing HTTP transport.
+
+This proves the activation gate and typed client pipeline without a network call. It does not alter production registration or runtime behaviour.
+
+### Read-only behaviour proven
+
+The rehearsal verifies that activated reads use only:
+
+- `GET /authoring/content`;
+- `GET /authoring/content/{contentId}`.
+
+The fake transport captures the outbound method and path. No write, workflow, or publish route is called.
+
+### Request boundary and access safety
+
+The rehearsal verifies:
+
+- access is attached only through `StudioApiRequestBoundaryHandler`;
+- tenant and test headers are stripped or absent before the fake transport receives a request;
+- safe client messages do not expose the synthetic access value;
+- no browser/page/request model supplies tenant IDs.
+
+### Rollback and fail-closed behaviour
+
+The rehearsal verifies:
+
+- disabled activation resolves `IStudioContentClient` to `LocalStudioContentClient`;
+- invalid activation resolves `IStudioContentClient` to `LocalStudioContentClient`;
+- unavailable write/workflow/publish methods do not call the fake transport.
+
+### Write, workflow, and publish boundaries
+
+The activated read client keeps these operations unavailable:
+
+- live create draft;
+- live update draft;
+- live request review;
+- live approve;
+- live reject;
+- live publish.
+
+### Explicitly not built
+
+- Live Studio read activation by default.
+- Real network calls.
+- Live create/update/review/approve/reject/publish.
+- Production code changes.
+- Backend/API changes.
+- EF migrations.
+- Database schema changes.
+- Real appsettings values.
+- Deployment automation.
+- Analytics.
+- AI.
+- Event Hubs.
+- ClickHouse.
+- Browser extension work.
+- Property MTD integration.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+git diff -- src/Adopta.Web/appsettings.json src/Adopta.Web/appsettings.Development.json src/Adopta.Api/appsettings.json src/Adopta.Api/appsettings.Development.json
+Run the configured secret-marker guardrail search across source, docs, and config files.
+rg "X-Adopta-Tenant-Id|X-Adopta-Test-" src/Adopta.Web -g "!src/Adopta.Web/Studio/StudioApiRequestBoundaryHandler.cs" -g "!**/bin/**" -g "!**/obj/**"
+rg "PostAsync|PutAsync|PatchAsync|DeleteAsync|/request-review|/approve|/reject|/publish" src/Adopta.Web/Studio/StudioAuthoringReadApiClient.cs
+rg "Migrate\(|EnsureCreated\(|EnsureDeleted\(|Database\.Ensure" src tests -g "!**/bin/**" -g "!**/obj/**" -g "!tests/Adopta.UnitTests/PersistenceMigrationReadinessTests.cs"
+rg "AddHealthChecks|IHealthCheck|CanConnect|OpenConnection|SqlConnection|AddSqlServer" src tests -g "!**/bin/**" -g "!**/obj/**"
+git diff --check
+```
+
+### Known limitations
+
+- No environment values are committed.
+- No live Studio reads are activated by default.
+- The rehearsal uses fake test-only transport and access seams.
+- The rehearsal does not validate a deployed identity provider or real API environment.
+- Live write/workflow/publish API integration remains separately approval-gated.
+
+### Next recommended slice
+
+Add an operator-facing read API activation status surface only if explicitly approved, using the existing preflight and rehearsal outputs. Keep live write/workflow/publish activation, backend changes, appsettings values, migrations, analytics, AI, deployment automation, and Property MTD integration separately approved.
