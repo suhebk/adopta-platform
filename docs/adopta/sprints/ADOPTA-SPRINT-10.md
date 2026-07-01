@@ -503,3 +503,131 @@ git diff --check
 ### Next recommended slice
 
 Close Sprint 10 with documentation and guardrail review, or plan the separately approved environment activation procedure. Keep live write/workflow/publish activation, backend changes, appsettings values, migrations, analytics, AI, deployment automation, and Property MTD integration separately approved.
+
+## Slice 5 - Sprint 10 closeout documentation and guardrail review
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Closed the controlled Studio read API activation validation sprint with an operator handoff runbook.
+- `FR-IDN-005` - Reconfirmed that access values and configuration values must remain server-side and external to repository files.
+- `FR-IDN-012` - Reconfirmed that Web pages and request models do not supply tenant IDs.
+- `FR-IDN-031` - Reconfirmed tenant and test header guardrails for production Web code.
+- `FR-GOV-002` - Reconfirmed that the live Studio API path remains read-only and workflow/publish operations remain unavailable.
+- `NFR-SEC-1` - Reconfirmed disabled-by-default and fail-closed activation posture.
+- `NFR-SEC-2` - Added closeout documentation and tests that avoid configured value and secret exposure.
+- `NFR-TEST-1` - Added non-invasive documentation guardrails for the Sprint 10 closeout and activation runbook.
+
+### Scope delivered
+
+- Added `docs/adopta/studio/STUDIO-READ-API-ACTIVATION-RUNBOOK.md`.
+- Added documentation guardrail tests for the Sprint 10 closeout and runbook.
+- Updated this Sprint 10 document with closeout status.
+- Updated the documentation index with the activation runbook and current Sprint 10 status.
+
+No production code, appsettings, API projects, EF migrations, database schema, deployment files, or runtime SDK files were changed.
+
+### Runbook summary
+
+The activation runbook documents the operational handoff for controlled read-only Studio API activation validation. It covers:
+
+- internal preflight validation;
+- controlled environment validation;
+- activation rehearsal;
+- operator-facing governance status surface;
+- current local/fallback and explicit activation posture;
+- activation prerequisites using placeholders only;
+- operator validation flow;
+- rollback and fail-closed expectations;
+- security boundaries;
+- explicit non-goals;
+- next recommended sprint direction.
+
+### Current activation posture
+
+- `LocalStudioContentClient` remains the default and fallback.
+- `StudioAuthoringReadApiClient` remains read-only.
+- Live read API activation remains explicit.
+- Activation remains disabled by default.
+- Activation remains fail-closed for missing, disabled, or invalid configuration.
+- Live write, workflow, and publish operations remain unavailable.
+- No live activation by default was added.
+
+### Security and tenant boundary status
+
+- Browser pages and Web request models do not supply tenant IDs.
+- `X-Adopta-Tenant-Id` is not a Web production shortcut.
+- `X-Adopta-Test-*` is not a Web production shortcut.
+- The request boundary remains the only Authorization attachment point.
+- Repository files contain placeholders only for activation guidance.
+- No committed secrets, access values, tenant values, configured values, raw claims, headers, tax data, HMRC data, property data, sensitive content, or raw exceptions are intentionally exposed.
+
+### Explicitly not built
+
+- Live Studio read activation by default.
+- Real network calls.
+- Live create draft.
+- Live update draft.
+- Live request review.
+- Live approve.
+- Live reject.
+- Live publish.
+- Backend/API changes.
+- EF migrations.
+- Database schema changes.
+- Appsettings values.
+- Deployment automation.
+- Analytics.
+- AI.
+- Event Hubs.
+- ClickHouse.
+- Browser extension work.
+- Property MTD integration.
+
+### Commands run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+git diff -- src/Adopta.Web/appsettings.json src/Adopta.Web/appsettings.Development.json src/Adopta.Api/appsettings.json src/Adopta.Api/appsettings.Development.json
+Run the configured guardrail searches for tenant/test headers, token/secret markers, live write routes/calls, migration/database mutation, DB connectivity/health checks, appsettings drift, and live activation boundaries.
+git diff --check
+```
+
+### Known limitations
+
+- No environment-specific values are committed.
+- No live Studio reads are activated by default.
+- The closeout runbook is an operational handoff artifact, not an activation mechanism.
+- The operator-facing status surface reports readiness only; it does not activate live reads.
+- Live write/workflow/publish API integration remains separately approval-gated.
+- Real identity provider and deployed API validation remain environment-specific operational steps.
+
+### Sprint 10 closeout checklist
+
+- [x] Internal preflight validation documented.
+- [x] Controlled environment validation documented.
+- [x] Activation rehearsal documented.
+- [x] Operator-facing governance status surface documented.
+- [x] Activation runbook added.
+- [x] Disabled-by-default and fail-closed posture documented.
+- [x] Read-only client posture documented.
+- [x] Tenant and test header guardrails documented.
+- [x] Live write/workflow/publish boundaries documented.
+- [x] Documentation guardrail tests added.
+- [x] No production code changes included in Slice 5.
+- [x] No appsettings, API, EF, schema, deployment, runtime SDK, analytics, AI, or external integration changes included in Slice 5.
+
+### Sprint 10 closeout status
+
+Sprint 10 is ready to close as a controlled read-only Studio API activation validation foundation.
+
+The platform now has documented and test-backed readiness, environment validation, rehearsal, operator status, and handoff guidance for read-only Studio API activation. Actual environment activation, live write/workflow/publish integration, backend/API changes, migrations, deployment automation, analytics, AI, browser extension work, and Property MTD integration remain outside Sprint 10 and require separate approval.
+
+### Next recommended sprint direction
+
+Start a separately approved sprint for controlled environment-specific read-only activation execution, or plan live Studio write/workflow API integration only after read-only activation has been validated and accepted. Keep publish, migrations, deployment automation, analytics, AI, browser extension work, and Property MTD integration approval-gated.

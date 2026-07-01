@@ -36,11 +36,12 @@ Property Income MTD remains undisturbed while its remaining sprints continue. Ad
 | studio | Studio Read API Environment Validation | Placeholder-only environment validation guidance for controlled read-only Studio API activation. |
 | studio | Studio Read API Activation Rehearsal | Test-only activation rehearsal guidance for the read-only Studio API path. |
 | studio | Studio Read API Status Surface | Operator-facing readiness surface for controlled read-only Studio API activation. |
+| studio | Studio Read API Activation Runbook | Sprint 10 closeout runbook for controlled read-only Studio API activation validation and operator handoff. |
 | sprints | ADOPTA-SPRINT-5 | Controlled production enablement foundations, starting with reviewable EF schema baseline generation. |
 | sprints | ADOPTA-SPRINT-6 | Runtime delivery API and bundle retrieval foundation. |
 | sprints | ADOPTA-SPRINT-8 | Adoption Studio UI foundation, starting with read-only content list and view. |
 | sprints | ADOPTA-SPRINT-9 | Controlled authenticated Studio API integration and read-only activation readiness closeout. |
-| sprints | ADOPTA-SPRINT-10 | Controlled Studio read API activation validation, starting with safe preflight readiness. |
+| sprints | ADOPTA-SPRINT-10 | Controlled Studio read API activation validation, closed with runbook and guardrail review. |
 
 ## Important superseding decisions
 
@@ -60,6 +61,6 @@ The baseline research documents are retained because they contain valuable DAP m
 
 ## Current sprint
 
-Current sprint: `ADOPTA-SPRINT-1 — SaaS Foundation, Security, Tenant Model, RBAC, Audit, and Repository Structure`.
+Current sprint: `ADOPTA-SPRINT-10 - Controlled Studio Read API Activation Validation`.
 
 Codex must plan first, list exact files to add/change, and wait for approval before applying changes.
