@@ -116,7 +116,51 @@ public sealed class AuthoringApiEndpointTests
         Assert.True(body.Succeeded);
         Assert.NotNull(body.Content);
         Assert.Equal(seed.InternalTenantId, body.Content.TenantId);
+        Assert.Equal(AuthoredContentType.Tooltip, body.Content.ContentType);
         Assert.Single(body.Content.Versions);
+    }
+
+    [Fact]
+    public async Task Create_authored_content_requires_content_type()
+    {
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringManage);
+        using var factory = BuildFactoryWithSeed(seed);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            "/authoring/content",
+            seed,
+            BuildCreateRequest(contentType: null));
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadFromJsonAsync<AuthoringCommandResponse>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.NotNull(body);
+        Assert.False(body.Succeeded);
+        Assert.Contains(body.Issues, issue => issue.Code == "invalid_content_type" && issue.Path == "content.contentType");
+    }
+
+    [Fact]
+    public async Task Create_authored_content_rejects_invalid_content_type_safely()
+    {
+        var seed = TestIdentitySeed.Create(AdoptaPermissionKeys.AuthoringManage);
+        using var factory = BuildFactoryWithSeed(seed);
+        using var client = factory.CreateClient();
+        using var request = CreateAuthenticatedRequest(
+            HttpMethod.Post,
+            "/authoring/content",
+            seed,
+            BuildCreateRequest(contentType: (AuthoredContentType)99));
+
+        var response = await client.SendAsync(request);
+        var body = await response.Content.ReadFromJsonAsync<AuthoringCommandResponse>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.NotNull(body);
+        Assert.False(body.Succeeded);
+        Assert.Contains(body.Issues, issue => issue.Code == "invalid_content_type" && issue.Path == "content.contentType");
+        Assert.DoesNotContain(body.Issues, issue => issue.Message.Contains("99", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -144,6 +188,7 @@ public sealed class AuthoringApiEndpointTests
         Assert.NotNull(listBody);
         Assert.Contains(listBody.Items, item => item.Id == tenantAContent.Id);
         Assert.DoesNotContain(listBody.Items, item => item.Id == tenantBContent.Id);
+        Assert.Contains(listBody.Items, item => item.Id == tenantAContent.Id && item.ContentType == AuthoredContentType.Tooltip);
     }
 
     [Fact]
@@ -199,6 +244,7 @@ public sealed class AuthoringApiEndpointTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(body);
         var item = body.Items.Single(candidate => candidate.Id == content.Id);
+        Assert.Equal(AuthoredContentType.Tooltip, item.ContentType);
         Assert.NotNull(item.Summary);
         Assert.Equal(1, item.Summary.LifecycleEventCount);
         Assert.Equal(1, item.Summary.PublishingEventCount);
@@ -247,6 +293,7 @@ public sealed class AuthoringApiEndpointTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(body);
+        Assert.Equal(AuthoredContentType.Tooltip, body.ContentType);
         Assert.NotNull(body.Summary);
         Assert.Equal(1, body.Summary.LifecycleEventCount);
         Assert.Equal(0, body.Summary.PublishingEventCount);
@@ -794,10 +841,12 @@ public sealed class AuthoringApiEndpointTests
         return request;
     }
 
-    private static CreateAuthoredContentRequest BuildCreateRequest()
+    private static CreateAuthoredContentRequest BuildCreateRequest(
+        AuthoredContentType? contentType = AuthoredContentType.Tooltip)
     {
         return new CreateAuthoredContentRequest(
             Guid.NewGuid(),
+            contentType,
             "billing.submit",
             "Submit return",
             "1.0.0");
@@ -822,6 +871,7 @@ public sealed class AuthoringApiEndpointTests
             Guid.NewGuid(),
             tenantId,
             Guid.NewGuid(),
+            AuthoredContentType.Tooltip,
             "billing.submit",
             "Submit return",
             [

@@ -25,13 +25,41 @@ public sealed class StudioAuthoringReadApiMapperTests
     [Fact]
     public void Mapper_marks_missing_content_type_as_unavailable()
     {
-        var response = BuildContentResponse();
+        var response = BuildContentResponse(contentType: null);
 
         var item = StudioAuthoringReadApiMapper.MapItem(response);
 
         Assert.False(item.HasKnownContentType);
         Assert.Equal(RuntimeContentType.Tooltip, item.ContentType);
         Assert.Equal("Limited authoring API metadata loaded.", item.History.LatestSafeActivity);
+    }
+
+    [Theory]
+    [InlineData(StudioAuthoringContentTypeApiResponse.Tooltip, RuntimeContentType.Tooltip)]
+    [InlineData(StudioAuthoringContentTypeApiResponse.Callout, RuntimeContentType.Callout)]
+    [InlineData(StudioAuthoringContentTypeApiResponse.Checklist, RuntimeContentType.Checklist)]
+    [InlineData(StudioAuthoringContentTypeApiResponse.Walkthrough, RuntimeContentType.Walkthrough)]
+    public void Mapper_maps_known_content_type_as_authoritative(
+        StudioAuthoringContentTypeApiResponse apiContentType,
+        RuntimeContentType expectedContentType)
+    {
+        var response = BuildContentResponse(contentType: apiContentType);
+
+        var item = StudioAuthoringReadApiMapper.MapItem(response);
+
+        Assert.True(item.HasKnownContentType);
+        Assert.Equal(expectedContentType, item.ContentType);
+    }
+
+    [Fact]
+    public void Mapper_keeps_invalid_content_type_unavailable()
+    {
+        var response = BuildContentResponse(contentType: (StudioAuthoringContentTypeApiResponse)99);
+
+        var item = StudioAuthoringReadApiMapper.MapItem(response);
+
+        Assert.False(item.HasKnownContentType);
+        Assert.Equal(RuntimeContentType.Tooltip, item.ContentType);
     }
 
     [Fact]
@@ -69,7 +97,7 @@ public sealed class StudioAuthoringReadApiMapperTests
         Assert.Equal(2, item.History.PublishingEventCount);
         Assert.Equal("Published to runtime delivery", item.History.LatestSafeActivity);
         Assert.Equal(latest, item.History.LatestActivityAtUtc);
-        Assert.False(item.HasKnownContentType);
+        Assert.True(item.HasKnownContentType);
     }
 
     [Fact]
@@ -105,6 +133,7 @@ public sealed class StudioAuthoringReadApiMapperTests
     private static StudioAuthoringContentApiResponse BuildContentResponse(
         Guid? applicationId = null,
         string title = "Welcome tooltip",
+        StudioAuthoringContentTypeApiResponse? contentType = StudioAuthoringContentTypeApiResponse.Tooltip,
         StudioAuthoringContentReadSummaryApiResponse? summary = null)
     {
         var latest = DateTimeOffset.Parse("2026-06-30T10:00:00Z");
@@ -114,6 +143,7 @@ public sealed class StudioAuthoringReadApiMapperTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             applicationId ?? Guid.NewGuid(),
+            contentType,
             "welcome.tooltip",
             title,
             [

@@ -10,9 +10,10 @@ public sealed class AuthoredContentItem : TenantScopedEntity
         Guid id,
         Guid tenantId,
         Guid applicationId,
+        AuthoredContentType contentType,
         string contentKey,
         string title)
-        : this(id, tenantId, applicationId, contentKey, title, null)
+        : this(id, tenantId, applicationId, contentType, contentKey, title, null)
     {
     }
 
@@ -20,6 +21,7 @@ public sealed class AuthoredContentItem : TenantScopedEntity
         Guid id,
         Guid tenantId,
         Guid applicationId,
+        AuthoredContentType contentType,
         string contentKey,
         string title,
         IReadOnlyCollection<AuthoredContentVersion>? versions = null)
@@ -27,6 +29,7 @@ public sealed class AuthoredContentItem : TenantScopedEntity
     {
         Id = id;
         ApplicationId = applicationId;
+        ContentType = contentType;
         ContentKey = contentKey;
         Title = title;
         _versions = versions?.ToList() ?? [];
@@ -35,6 +38,8 @@ public sealed class AuthoredContentItem : TenantScopedEntity
     public Guid Id { get; }
 
     public Guid ApplicationId { get; }
+
+    public AuthoredContentType ContentType { get; }
 
     public string ContentKey { get; }
 

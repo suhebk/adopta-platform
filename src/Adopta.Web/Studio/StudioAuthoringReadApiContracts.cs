@@ -6,6 +6,7 @@ public sealed record StudioAuthoringContentApiResponse(
     Guid Id,
     Guid TenantId,
     Guid ApplicationId,
+    StudioAuthoringContentTypeApiResponse? ContentType,
     string ContentKey,
     string Title,
     IReadOnlyCollection<StudioAuthoringContentVersionApiResponse> Versions,
@@ -32,6 +33,14 @@ public sealed record StudioAuthoringLatestPublishSummaryApiResponse(
     string Environment,
     DeliveryChannel Channel,
     DateTimeOffset OccurredAtUtc);
+
+public enum StudioAuthoringContentTypeApiResponse
+{
+    Tooltip = 0,
+    Callout = 1,
+    Checklist = 2,
+    Walkthrough = 3
+}
 
 public enum StudioAuthoringLifecycleStateApiResponse
 {

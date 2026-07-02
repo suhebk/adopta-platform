@@ -1,8 +1,30 @@
 # Studio Content Type Source-of-Truth Design
 
-This document defines the planned source-of-truth model for authored content type before any production implementation is approved.
+This document defines the source-of-truth model for authored content type.
 
-This slice is planning only. It does not add production code, domain changes, API contract changes, EF migrations, schema changes, appsettings values, live read activation, or live create/update/review/approve/reject/publish integration.
+Sprint 11 Slice 3 introduced this design as planning-only. Sprint 11 Slice 4 implemented the domain/API/runtime/Web mapping source-of-truth and added review-only EF migration source. The migration is not executed automatically, no database is created automatically, no startup database mutation is introduced, and live read activation remains explicit.
+
+## Slice 4 Implementation Status
+
+Implemented:
+
+- domain-owned authored content type enum;
+- item-level `AuthoredContentItem.ContentType`;
+- create/read API contract support;
+- validation requiring content type for new authored content;
+- runtime bundle mapper support;
+- Web live-read DTO and mapper support;
+- EF model configuration;
+- review-only EF migration source for `AuthoredContentItems.ContentType`.
+
+Not implemented:
+
+- migration execution;
+- automatic database creation;
+- startup database mutation;
+- production backfill execution;
+- live read activation by default;
+- live create/update/review/approve/reject/publish API wiring from Studio.
 
 ## Design Decision
 
@@ -162,14 +184,11 @@ Likely tests:
 
 ## Explicit Non-Goals
 
-This design does not approve:
+This design and Slice 4 implementation do not approve:
 
-- production code changes;
-- domain enum implementation;
-- domain model changes;
-- API contract implementation;
-- EF migrations;
-- schema changes;
+- migration execution;
+- automatic database creation;
+- startup database mutation;
 - live read activation by default;
 - live create/update/review/approve/reject/publish integration;
 - real appsettings values;

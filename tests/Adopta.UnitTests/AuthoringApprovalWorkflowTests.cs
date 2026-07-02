@@ -197,6 +197,7 @@ public sealed class AuthoringApprovalWorkflowTests
             Guid.NewGuid(),
             tenantId,
             Guid.NewGuid(),
+            AuthoredContentType.Tooltip,
             "billing.submit",
             "Submit return",
             [version]);

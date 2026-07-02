@@ -301,6 +301,7 @@ public sealed class PublishingToDeliveryStoreEndpointTests
             Guid.NewGuid(),
             tenantId,
             Guid.NewGuid(),
+            AuthoredContentType.Tooltip,
             $"billing.submit.{Guid.NewGuid():N}",
             "Submit return",
             [

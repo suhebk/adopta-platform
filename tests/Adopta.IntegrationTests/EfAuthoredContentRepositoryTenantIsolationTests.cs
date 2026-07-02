@@ -87,6 +87,7 @@ public sealed class EfAuthoredContentRepositoryTenantIsolationTests
             Guid.NewGuid(),
             tenantId,
             Guid.NewGuid(),
+            AuthoredContentType.Tooltip,
             $"content.{Guid.NewGuid():N}",
             "Tenant scoped content",
             [

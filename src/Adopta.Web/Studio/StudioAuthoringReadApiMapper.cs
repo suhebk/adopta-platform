@@ -35,18 +35,19 @@ public static class StudioAuthoringReadApiMapper
             .ToArray();
         var lifecycleState = versions.FirstOrDefault()?.LifecycleState ?? StudioContentLifecycleState.Draft;
         var latestActivityAtUtc = versions.FirstOrDefault()?.CreatedAtUtc;
+        var hasKnownContentType = TryMapContentType(response.ContentType, out var contentType);
 
         return new StudioContentListItem(
             response.Id,
             response.ApplicationId,
             response.ContentKey,
             response.Title,
-            RuntimeContentType.Tooltip,
+            contentType,
             lifecycleState,
             versions,
             MapHistorySummary(response.Summary, versions.Length, latestActivityAtUtc))
         {
-            HasKnownContentType = false
+            HasKnownContentType = hasKnownContentType
         };
     }
 
@@ -93,4 +94,26 @@ public static class StudioAuthoringReadApiMapper
             StudioAuthoringLifecycleStateApiResponse.Archived => StudioContentLifecycleState.Archived,
             _ => StudioContentLifecycleState.Draft
         };
+
+    private static bool TryMapContentType(
+        StudioAuthoringContentTypeApiResponse? apiContentType,
+        out RuntimeContentType contentType)
+    {
+        contentType = RuntimeContentType.Tooltip;
+        if (apiContentType is null || !Enum.IsDefined(apiContentType.Value))
+        {
+            return false;
+        }
+
+        contentType = apiContentType.Value switch
+        {
+            StudioAuthoringContentTypeApiResponse.Tooltip => RuntimeContentType.Tooltip,
+            StudioAuthoringContentTypeApiResponse.Callout => RuntimeContentType.Callout,
+            StudioAuthoringContentTypeApiResponse.Checklist => RuntimeContentType.Checklist,
+            StudioAuthoringContentTypeApiResponse.Walkthrough => RuntimeContentType.Walkthrough,
+            _ => RuntimeContentType.Tooltip
+        };
+
+        return true;
+    }
 }

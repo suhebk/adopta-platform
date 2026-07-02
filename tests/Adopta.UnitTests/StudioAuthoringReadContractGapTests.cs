@@ -12,11 +12,12 @@ public sealed class StudioAuthoringReadContractGapTests
         "docs/adopta/sprints/ADOPTA-SPRINT-11.md";
 
     [Fact]
-    public void Live_authoring_read_api_contract_does_not_expose_content_type()
+    public void Live_authoring_read_api_contract_exposes_domain_content_type_without_runtime_dependency()
     {
         var contractSource = ReadRepositoryFile("src/Adopta.Api/Authoring/AuthoringApiContracts.cs");
 
-        Assert.DoesNotContain("ContentType", contractSource, StringComparison.Ordinal);
+        Assert.Contains("AuthoredContentType? ContentType", contractSource, StringComparison.Ordinal);
+        Assert.Contains("AuthoredContentType ContentType", contractSource, StringComparison.Ordinal);
         Assert.DoesNotContain("RuntimeContentType", contractSource, StringComparison.Ordinal);
     }
 
@@ -39,11 +40,13 @@ public sealed class StudioAuthoringReadContractGapTests
     }
 
     [Fact]
-    public void Studio_authoring_read_contract_mirror_keeps_content_type_gap_explicit()
+    public void Studio_authoring_read_contract_mirror_keeps_nullable_content_type_for_legacy_fallback()
     {
-        Assert.DoesNotContain(
+        var property = Assert.Single(
             typeof(StudioAuthoringContentApiResponse).GetProperties(),
-            property => property.Name.Contains("ContentType", StringComparison.OrdinalIgnoreCase));
+            property => string.Equals(property.Name, "ContentType", StringComparison.Ordinal));
+
+        Assert.Equal(typeof(StudioAuthoringContentTypeApiResponse?), property.PropertyType);
     }
 
     [Fact]
@@ -157,6 +160,7 @@ public sealed class StudioAuthoringReadContractGapTests
             Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
+            null,
             "welcome.tooltip",
             "Welcome tooltip",
             [

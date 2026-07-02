@@ -377,3 +377,127 @@ Results: .NET debug test, release build, release test, TypeScript typecheck, Typ
 ### Next recommended slice
 
 Implement the content type source-of-truth in a separately approved, tightly scoped production slice. The smallest safe implementation should add the domain-owned enum, item-level domain property, create/read DTO support, validation, runtime bundle mapping, and Web mapper support. Keep EF migration source and database backfill separately approved unless the implementation slice explicitly includes review-only schema work.
+
+## Slice 4 - Content type source-of-truth domain/API implementation
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Preserved explicit live Studio read activation posture.
+- `FR-IDN-005` - Kept downstream Studio API access read-only.
+- `FR-IDN-012` - Preserved no-tenant-ID Web request model boundary.
+- `FR-IDN-031` - Preserved tenant/test header guardrails and existing tenant context enforcement.
+- `FR-GOV-002` - Added authoritative content type metadata for governed authoring and Studio read UX.
+- `NFR-SEC-1` - Preserved tenant-scoped API/repository behaviour and existing permission model.
+- `NFR-SEC-2` - Added content type metadata without exposing content body, headers, claims, configured values, tenant values, or sensitive content.
+- `NFR-TEST-1` - Added domain, API, runtime mapper, Web mapper, EF model, and migration-source tests.
+
+### Scope delivered
+
+- Added domain-owned `AuthoredContentType`.
+- Added item-level `AuthoredContentItem.ContentType`.
+- Added create/read API contract support.
+- Added validation requiring content type for new authored content.
+- Updated runtime bundle mapping to use the authored content type instead of hardcoded tooltip.
+- Updated Web live-read DTO and mapper to mark known content type authoritative.
+- Preserved Web fallback for missing or invalid live API content type with `HasKnownContentType=false`.
+- Added EF model configuration for `AuthoredContentItems.ContentType`.
+- Added review-only EF migration source for `AuthoredContentItems.ContentType`.
+- Updated content type source-of-truth documentation.
+
+### Domain and API behaviour
+
+Content type is now an authored content item source-of-truth field. It is not version metadata.
+
+Allowed domain values:
+
+- `Tooltip`;
+- `Callout`;
+- `Checklist`;
+- `Walkthrough`.
+
+New create requests must provide a valid content type. Invalid or missing content type returns a typed safe validation issue without echoing raw invalid input.
+
+Read responses include the content type. Existing `Authoring.Read` and `Authoring.Manage` permission boundaries are preserved. No new permission keys were added.
+
+### Runtime mapper behaviour
+
+Runtime bundle mapping now uses controlled mapping:
+
+- `Tooltip` -> `RuntimeContentType.Tooltip`;
+- `Callout` -> `RuntimeContentType.Callout`;
+- `Checklist` -> `RuntimeContentType.Checklist`;
+- `Walkthrough` -> `RuntimeContentType.Walkthrough`.
+
+The mapper no longer hardcodes tooltip for authored content with a known type.
+
+### Web mapper behaviour
+
+The live Studio read mirror DTO keeps content type nullable for compatibility with older or incomplete API responses.
+
+Mapper behaviour:
+
+- known valid API content type maps to runtime content type and `HasKnownContentType=true`;
+- missing API content type maps to fallback display type and `HasKnownContentType=false`;
+- invalid API content type maps to fallback display type and `HasKnownContentType=false`;
+- no inference is performed from content key, title, route, selector, or UI fallback.
+
+### EF mapping and review-only migration
+
+EF model configuration maps `AuthoredContentItem.ContentType` as a controlled string with max length 32.
+
+Review-only migration source adds `ContentType` to `AuthoredContentItems` with a controlled string mapping. The migration is source only for review. It was not executed.
+
+No automatic migration execution, automatic database creation, startup database mutation, production backfill execution, deployment automation, or real database connectivity check was added.
+
+### Backward compatibility and backfill
+
+New authored content requires content type.
+
+Existing persisted rows without content type require separately approved migration/backfill handling before production SQL Server enablement relies on the new field.
+
+The review-only migration uses a safe default for schema transition review, but production backfill and deployment sequencing remain separately approval-gated.
+
+### Explicitly not built
+
+- Migration execution.
+- Automatic database creation.
+- Startup database mutation.
+- Production backfill execution.
+- Live read activation by default.
+- Live create/update/review/approve/reject/publish integration from Studio.
+- Real appsettings values.
+- Deployment automation.
+- Analytics.
+- AI.
+- Event Hubs.
+- ClickHouse.
+- Browser extension work.
+- Property MTD integration.
+
+### Commands run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+git diff -- src/Adopta.Web/appsettings.json src/Adopta.Web/appsettings.Development.json src/Adopta.Api/appsettings.json src/Adopta.Api/appsettings.Development.json
+Run guardrail searches for tenant/test headers, token/secret markers, live write routes/calls, migration/database mutation, DB connectivity/health checks, appsettings drift, and live activation boundaries.
+git diff --check
+```
+
+Results: .NET debug test, release build, release test, TypeScript typecheck, TypeScript build, TypeScript tests, guardrail searches, and diff whitespace checks passed for Slice 4.
+
+### Known limitations
+
+- Production SQL Server environments still require separately approved migration execution and backfill planning.
+- Live Studio create/update/review/approve/reject/publish integration remains out of scope.
+- Live read activation remains explicit and disabled by default.
+- Application metadata remains ID-only.
+
+### Next recommended slice
+
+Plan controlled migration/backfill review for `AuthoredContentItems.ContentType`, or proceed to application display metadata for Studio reads if production SQL Server enablement remains deferred. Keep migration execution, startup mutation, live write/workflow/publish wiring, appsettings values, deployment automation, analytics, AI, browser extension work, and Property MTD integration separately approved.

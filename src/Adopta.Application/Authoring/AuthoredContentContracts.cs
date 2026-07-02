@@ -6,6 +6,7 @@ public sealed record AuthoredContentContract(
     Guid Id,
     Guid TenantId,
     Guid ApplicationId,
+    AuthoredContentType? ContentType,
     string ContentKey,
     string Title,
     IReadOnlyCollection<AuthoredContentVersionContract> Versions);

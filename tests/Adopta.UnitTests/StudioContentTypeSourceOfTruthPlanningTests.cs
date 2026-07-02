@@ -89,8 +89,9 @@ public sealed class StudioContentTypeSourceOfTruthPlanningTests
         Assert.Contains("Web And Studio Impact", design, StringComparison.Ordinal);
         Assert.Contains("Future Implementation Impact", design, StringComparison.Ordinal);
         Assert.Contains("live create/update/review/approve/reject/publish integration", design, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("EF migrations", design, StringComparison.Ordinal);
-        Assert.Contains("schema changes", design, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("review-only EF migration source", design, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("migration execution", design, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("startup database mutation", design, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("live read activation by default", design, StringComparison.OrdinalIgnoreCase);
     }
 

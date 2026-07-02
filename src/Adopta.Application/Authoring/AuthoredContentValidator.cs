@@ -17,6 +17,7 @@ public static class AuthoredContentValidator
         RequireGuid(content.Id, "content.id", "invalid_authored_content", issues);
         RequireGuid(content.TenantId, "content.tenantId", "invalid_authored_content", issues);
         RequireGuid(content.ApplicationId, "content.applicationId", "invalid_authored_content", issues);
+        RequireContentType(content.ContentType, "content.contentType", issues);
         RequireNonBlank(content.ContentKey, "content.contentKey", "invalid_authored_content", issues);
         RequireNonBlank(content.Title, "content.title", "invalid_authored_content", issues);
 
@@ -123,6 +124,17 @@ public static class AuthoredContentValidator
         if (string.IsNullOrWhiteSpace(value))
         {
             issues.Add(Issue(code, path, "Value must be a non-empty string."));
+        }
+    }
+
+    private static void RequireContentType(
+        AuthoredContentType? contentType,
+        string path,
+        ICollection<AuthoredContentValidationIssue> issues)
+    {
+        if (contentType is null || !Enum.IsDefined(contentType.Value))
+        {
+            issues.Add(Issue("invalid_content_type", path, "Content type is invalid."));
         }
     }
 
