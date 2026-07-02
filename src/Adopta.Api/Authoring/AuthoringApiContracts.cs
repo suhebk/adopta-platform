@@ -5,6 +5,7 @@ namespace Adopta.Api.Authoring;
 
 public sealed record CreateAuthoredContentRequest(
     Guid ApplicationId,
+    AuthoredContentType? ContentType,
     string ContentKey,
     string Title,
     string Version);
@@ -13,6 +14,7 @@ public sealed record AuthoredContentResponse(
     Guid Id,
     Guid TenantId,
     Guid ApplicationId,
+    AuthoredContentType ContentType,
     string ContentKey,
     string Title,
     IReadOnlyCollection<AuthoredContentVersionResponse> Versions,

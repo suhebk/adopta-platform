@@ -83,6 +83,10 @@ public sealed class PersistenceModelConfigurationTests
             nameof(AuthoredContentItem.TenantId),
             nameof(AuthoredContentItem.ApplicationId),
             nameof(AuthoredContentItem.ContentKey));
+        var contentType = authoredContent.FindProperty(nameof(AuthoredContentItem.ContentType));
+        Assert.NotNull(contentType);
+        Assert.False(contentType.IsNullable);
+        Assert.Equal(32, contentType.GetMaxLength());
         Assert.False(authoredContent.FindProperty(nameof(AuthoredContentItem.Title))!.IsNullable);
 
         var tenantMapping = AssertEntityExists<TenantMappingRecord>(dbContext);

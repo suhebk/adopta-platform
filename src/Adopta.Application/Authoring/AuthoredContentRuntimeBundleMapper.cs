@@ -34,6 +34,11 @@ public static class AuthoredContentRuntimeBundleMapper
             issues.Add(Issue("invalid_publish_scope", "content.applicationId", "Application scope is invalid."));
         }
 
+        if (!Enum.IsDefined(content.ContentType))
+        {
+            issues.Add(Issue("invalid_content_type", "content.contentType", "Content type is invalid."));
+        }
+
         if (!IsSafeStructuralKey(content.ContentKey))
         {
             issues.Add(Issue("unsafe_content_key", "content.contentKey", "Content key is invalid."));
@@ -70,7 +75,7 @@ public static class AuthoredContentRuntimeBundleMapper
         var channel = ToContractChannel(command.Channel);
         var contentItem = new RuntimeContentItem(
             content.ContentKey.Trim(),
-            RuntimeContentType.Tooltip,
+            ToRuntimeContentType(content.ContentType),
             version.Version.Trim(),
             content.Title.Trim(),
             null,
@@ -123,6 +128,18 @@ public static class AuthoredContentRuntimeBundleMapper
             DeliveryChannel.Preview => "preview",
             DeliveryChannel.Published => "published",
             _ => string.Empty
+        };
+    }
+
+    private static RuntimeContentType ToRuntimeContentType(AuthoredContentType contentType)
+    {
+        return contentType switch
+        {
+            AuthoredContentType.Tooltip => RuntimeContentType.Tooltip,
+            AuthoredContentType.Callout => RuntimeContentType.Callout,
+            AuthoredContentType.Checklist => RuntimeContentType.Checklist,
+            AuthoredContentType.Walkthrough => RuntimeContentType.Walkthrough,
+            _ => throw new InvalidOperationException("Content type is invalid.")
         };
     }
 

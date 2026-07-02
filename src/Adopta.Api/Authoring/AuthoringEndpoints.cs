@@ -64,6 +64,7 @@ public static class AuthoringEndpoints
             contentId,
             tenantContext.TenantId,
             request.ApplicationId,
+            request.ContentType,
             request.ContentKey,
             request.Title,
             [
@@ -83,6 +84,7 @@ public static class AuthoringEndpoints
             contentId,
             tenantContext.TenantId,
             request.ApplicationId,
+            request.ContentType!.Value,
             request.ContentKey.Trim(),
             request.Title.Trim(),
             [version]);
@@ -390,6 +392,7 @@ public static class AuthoringEndpoints
             content.Id,
             content.TenantId,
             content.ApplicationId,
+            content.ContentType,
             content.ContentKey,
             content.Title,
             content.Versions.Select(ToVersionResponse).ToArray(),

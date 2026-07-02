@@ -430,6 +430,7 @@ public sealed class StudioReadApiActivationRehearsalTests
                 contentId,
                 Guid.NewGuid(),
                 Guid.NewGuid(),
+                StudioAuthoringContentTypeApiResponse.Tooltip,
                 "welcome.tooltip",
                 "Welcome tooltip",
                 [

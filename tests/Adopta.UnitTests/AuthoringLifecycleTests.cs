@@ -75,6 +75,47 @@ public sealed class AuthoringLifecycleTests
         Assert.Empty(result.Issues);
     }
 
+    [Theory]
+    [InlineData(AuthoredContentType.Tooltip)]
+    [InlineData(AuthoredContentType.Callout)]
+    [InlineData(AuthoredContentType.Checklist)]
+    [InlineData(AuthoredContentType.Walkthrough)]
+    public void Valid_authored_content_accepts_controlled_content_types(AuthoredContentType contentType)
+    {
+        var result = AuthoredContentValidator.ValidateContent(BuildContent(contentType: contentType));
+
+        Assert.True(result.IsValid);
+        Assert.Empty(result.Issues);
+    }
+
+    [Fact]
+    public void Authored_content_requires_valid_content_type()
+    {
+        var missing = AuthoredContentValidator.ValidateContent(BuildContent(contentType: null));
+        var invalid = AuthoredContentValidator.ValidateContent(BuildContent(contentType: (AuthoredContentType)99));
+
+        Assert.False(missing.IsValid);
+        Assert.False(invalid.IsValid);
+        Assert.Contains(missing.Issues, issue => issue.Code == "invalid_content_type" && issue.Path == "content.contentType");
+        Assert.Contains(invalid.Issues, issue => issue.Code == "invalid_content_type" && issue.Path == "content.contentType");
+        Assert.DoesNotContain(invalid.Issues, issue => issue.Message.Contains("99", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Domain_item_stores_authoritative_content_type_on_item()
+    {
+        var content = new AuthoredContentItem(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            AuthoredContentType.Checklist,
+            "billing.checklist",
+            "Billing checklist",
+            [BuildDomainVersion()]);
+
+        Assert.Equal(AuthoredContentType.Checklist, content.ContentType);
+    }
+
     [Fact]
     public void Validation_failure_shape_is_typed_and_safe()
     {
@@ -113,6 +154,7 @@ public sealed class AuthoringLifecycleTests
         Guid? id = null,
         Guid? tenantId = null,
         Guid? applicationId = null,
+        AuthoredContentType? contentType = AuthoredContentType.Tooltip,
         string contentKey = "billing.submit",
         string title = "Submit return",
         IReadOnlyCollection<AuthoredContentVersionContract>? versions = null)
@@ -121,6 +163,7 @@ public sealed class AuthoringLifecycleTests
             id ?? Guid.NewGuid(),
             tenantId ?? Guid.NewGuid(),
             applicationId ?? Guid.NewGuid(),
+            contentType,
             contentKey,
             title,
             versions ?? [BuildVersion()]);
@@ -134,6 +177,15 @@ public sealed class AuthoringLifecycleTests
             Guid.NewGuid(),
             version,
             state,
+            DateTimeOffset.UtcNow);
+    }
+
+    private static AuthoredContentVersion BuildDomainVersion()
+    {
+        return new AuthoredContentVersion(
+            Guid.NewGuid(),
+            "1.0.0",
+            ContentLifecycleState.Draft,
             DateTimeOffset.UtcNow);
     }
 }

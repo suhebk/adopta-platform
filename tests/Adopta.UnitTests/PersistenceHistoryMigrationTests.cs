@@ -15,6 +15,28 @@ public sealed class PersistenceHistoryMigrationTests
             file.EndsWith("_AddAuthoringHistoryPersistence.Designer.cs", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Content_type_migration_source_exists()
+    {
+        var migrationDirectory = MigrationDirectory();
+
+        Assert.Contains(Directory.EnumerateFiles(migrationDirectory), file =>
+            file.EndsWith("_AddAuthoredContentType.cs", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Content_type_migration_adds_review_only_content_type_column()
+    {
+        var migration = ReadContentTypeMigration();
+
+        Assert.Contains("name: \"ContentType\"", migration, StringComparison.Ordinal);
+        Assert.Contains("table: \"AuthoredContentItems\"", migration, StringComparison.Ordinal);
+        Assert.Contains("schema: \"adopta\"", migration, StringComparison.Ordinal);
+        Assert.Contains("type: \"nvarchar(32)\"", migration, StringComparison.Ordinal);
+        Assert.Contains("maxLength: 32", migration, StringComparison.Ordinal);
+        Assert.Contains("defaultValue: \"Tooltip\"", migration, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("AuthoredContentLifecycleHistory")]
     [InlineData("AuthoredContentPublishingHistory")]
@@ -53,6 +75,14 @@ public sealed class PersistenceHistoryMigrationTests
     private static string ReadHistoryMigration()
     {
         var migrationFile = Directory.EnumerateFiles(MigrationDirectory(), "*_AddAuthoringHistoryPersistence.cs")
+            .Single(file => !file.EndsWith(".Designer.cs", StringComparison.Ordinal));
+
+        return File.ReadAllText(migrationFile);
+    }
+
+    private static string ReadContentTypeMigration()
+    {
+        var migrationFile = Directory.EnumerateFiles(MigrationDirectory(), "*_AddAuthoredContentType.cs")
             .Single(file => !file.EndsWith(".Designer.cs", StringComparison.Ordinal));
 
         return File.ReadAllText(migrationFile);

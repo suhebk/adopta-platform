@@ -27,7 +27,8 @@ public sealed class StudioAuthoringReadApiClientTests
         Assert.NotNull(result.Value);
         var item = Assert.Single(result.Value.Items);
         Assert.Equal("welcome.tooltip", item.ContentKey);
-        Assert.False(item.HasKnownContentType);
+        Assert.True(item.HasKnownContentType);
+        Assert.Equal(RuntimeContentType.Tooltip, item.ContentType);
         Assert.Equal("/authoring/content", capturedRequest?.RequestUri?.AbsolutePath);
         AssertNoTenantInput(capturedRequest);
         Assert.DoesNotContain(capturedRequest!.Headers, header => header.Key.StartsWith("X-Adopta-Test-", StringComparison.OrdinalIgnoreCase));
@@ -181,6 +182,7 @@ public sealed class StudioAuthoringReadApiClientTests
             id ?? Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
+            StudioAuthoringContentTypeApiResponse.Tooltip,
             "welcome.tooltip",
             "Welcome tooltip",
             [

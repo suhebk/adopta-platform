@@ -92,6 +92,7 @@ public sealed class AuthoringTenantIsolationTests
             Guid.NewGuid(),
             tenantId,
             Guid.NewGuid(),
+            AuthoredContentType.Tooltip,
             "billing.submit",
             "Submit return",
             [

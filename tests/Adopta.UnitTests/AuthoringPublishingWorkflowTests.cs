@@ -141,6 +141,7 @@ public sealed class AuthoringPublishingWorkflowTests
             Guid.NewGuid(),
             tenantId,
             Guid.NewGuid(),
+            AuthoredContentType.Tooltip,
             contentKey,
             "Submit return",
             [version]);

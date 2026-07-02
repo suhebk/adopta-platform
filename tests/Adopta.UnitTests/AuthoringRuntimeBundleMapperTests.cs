@@ -54,6 +54,38 @@ public sealed class AuthoringRuntimeBundleMapperTests
     }
 
     [Theory]
+    [InlineData(AuthoredContentType.Tooltip, RuntimeContentType.Tooltip)]
+    [InlineData(AuthoredContentType.Callout, RuntimeContentType.Callout)]
+    [InlineData(AuthoredContentType.Checklist, RuntimeContentType.Checklist)]
+    [InlineData(AuthoredContentType.Walkthrough, RuntimeContentType.Walkthrough)]
+    public void Runtime_bundle_mapper_uses_authoritative_content_type(
+        AuthoredContentType authoredContentType,
+        RuntimeContentType expectedRuntimeType)
+    {
+        var content = BuildContent(ContentLifecycleState.Approved, contentType: authoredContentType);
+        var version = Assert.Single(content.Versions);
+        var command = BuildCommand(content, version);
+
+        var bundle = AuthoredContentRuntimeBundleMapper.Map(content, version, command);
+        var item = Assert.Single(bundle.Content.Items);
+
+        Assert.Equal(expectedRuntimeType, item.Type);
+    }
+
+    [Fact]
+    public void Mapping_validation_rejects_invalid_content_type_safely()
+    {
+        var content = BuildContent(ContentLifecycleState.Approved, contentType: (AuthoredContentType)99);
+        var version = Assert.Single(content.Versions);
+        var command = BuildCommand(content, version);
+
+        var issues = AuthoredContentRuntimeBundleMapper.ValidateMappingInputs(content, version, command);
+
+        Assert.Contains(issues, issue => issue.Code == "invalid_content_type" && issue.Path == "content.contentType");
+        Assert.DoesNotContain(issues, issue => issue.Message.Contains("99", StringComparison.Ordinal));
+    }
+
+    [Theory]
     [InlineData("billing submit")]
     [InlineData("billing/submit")]
     [InlineData("<billing.submit>")]
@@ -88,12 +120,14 @@ public sealed class AuthoringRuntimeBundleMapperTests
 
     private static AuthoredContentItem BuildContent(
         ContentLifecycleState state,
-        string contentKey = "billing.submit")
+        string contentKey = "billing.submit",
+        AuthoredContentType contentType = AuthoredContentType.Tooltip)
     {
         return new AuthoredContentItem(
             Guid.NewGuid(),
             Guid.NewGuid(),
             Guid.NewGuid(),
+            contentType,
             contentKey,
             "Submit return",
             [
