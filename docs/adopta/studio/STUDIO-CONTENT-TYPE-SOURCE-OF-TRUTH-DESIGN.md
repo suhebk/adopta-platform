@@ -2,7 +2,7 @@
 
 This document defines the source-of-truth model for authored content type.
 
-Sprint 11 Slice 3 introduced this design as planning-only. Sprint 11 Slice 4 implemented the domain/API/runtime/Web mapping source-of-truth and added review-only EF migration source. The migration is not executed automatically, no database is created automatically, no startup database mutation is introduced, and live read activation remains explicit.
+Sprint 11 Slice 3 introduced this design as planning-only. Sprint 11 Slice 4 implemented the domain/API/runtime/Web mapping source-of-truth and added review-only EF migration source. Sprint 11 Slice 5 added the schema/backfill readiness guide at `docs/adopta/studio/STUDIO-CONTENT-TYPE-SCHEMA-BACKFILL-READINESS.md`. The migration is not executed automatically, no database is created automatically, no startup database mutation is introduced, and live read activation remains explicit.
 
 ## Slice 4 Implementation Status
 
@@ -93,6 +93,8 @@ Likely persistence shape:
 - no free-form type values.
 
 Migration and backfill must be separately approved. No migration should execute automatically, no database should be created automatically, and no startup database mutation should be introduced.
+
+The operational readiness and backfill boundary is documented in `STUDIO-CONTENT-TYPE-SCHEMA-BACKFILL-READINESS.md`. That guide does not approve execution; it defines review gates for a later operationally approved change.
 
 Migration options to evaluate in a later implementation plan:
 
