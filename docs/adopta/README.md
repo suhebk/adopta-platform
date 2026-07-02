@@ -40,12 +40,14 @@ Property Income MTD remains undisturbed while its remaining sprints continue. Ad
 | studio | Studio Authoring Read Contract Gap Review | Sprint 11 read-contract gap review for live Studio API metadata readiness. |
 | studio | Studio Content Type Source-of-Truth Design | Sprint 11 planning for authoritative content type modelling across authoring, API, persistence, runtime mapping, and Studio reads. |
 | studio | Studio Content Type Schema And Backfill Readiness | Sprint 11 schema/backfill readiness guidance for the review-only authored content type migration source. |
+| studio | Studio Content Type Migration And Live Draft Readiness Gate | Sprint 12 readiness gate before live draft create/update can depend on content type schema/backfill state. |
 | sprints | ADOPTA-SPRINT-5 | Controlled production enablement foundations, starting with reviewable EF schema baseline generation. |
 | sprints | ADOPTA-SPRINT-6 | Runtime delivery API and bundle retrieval foundation. |
 | sprints | ADOPTA-SPRINT-8 | Adoption Studio UI foundation, starting with read-only content list and view. |
 | sprints | ADOPTA-SPRINT-9 | Controlled authenticated Studio API integration and read-only activation readiness closeout. |
 | sprints | ADOPTA-SPRINT-10 | Controlled Studio read API activation validation, closed with runbook and guardrail review. |
 | sprints | ADOPTA-SPRINT-11 | Studio live read contract hardening, starting with authoring read contract gap review. |
+| sprints | ADOPTA-SPRINT-12 | Live draft authoring readiness, starting with content type migration and backfill gate. |
 
 ## Important superseding decisions
 
@@ -65,6 +67,6 @@ The baseline research documents are retained because they contain valuable DAP m
 
 ## Current sprint
 
-Current sprint: `ADOPTA-SPRINT-11 - Studio Live Read Contract Hardening`.
+Current sprint: `ADOPTA-SPRINT-12 - Live Draft Authoring Readiness`.
 
 Codex must plan first, list exact files to add/change, and wait for approval before applying changes.
