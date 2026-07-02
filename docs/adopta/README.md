@@ -38,6 +38,7 @@ Property Income MTD remains undisturbed while its remaining sprints continue. Ad
 | studio | Studio Read API Status Surface | Operator-facing readiness surface for controlled read-only Studio API activation. |
 | studio | Studio Read API Activation Runbook | Sprint 10 closeout runbook for controlled read-only Studio API activation validation and operator handoff. |
 | studio | Studio Authoring Read Contract Gap Review | Sprint 11 read-contract gap review for live Studio API metadata readiness. |
+| studio | Studio Content Type Source-of-Truth Design | Sprint 11 planning for authoritative content type modelling across authoring, API, persistence, runtime mapping, and Studio reads. |
 | sprints | ADOPTA-SPRINT-5 | Controlled production enablement foundations, starting with reviewable EF schema baseline generation. |
 | sprints | ADOPTA-SPRINT-6 | Runtime delivery API and bundle retrieval foundation. |
 | sprints | ADOPTA-SPRINT-8 | Adoption Studio UI foundation, starting with read-only content list and view. |

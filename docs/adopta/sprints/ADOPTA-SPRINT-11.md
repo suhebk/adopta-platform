@@ -229,3 +229,151 @@ Results: .NET debug test, release build, release test, TypeScript typecheck, Typ
 ### Next recommended slice
 
 Plan the content type source-of-truth decision separately, or add tenant-scoped application display metadata to authoring reads if the Studio needs a friendlier application selector/display. Keep schema changes, live write/workflow/publish integration, appsettings values, deployment automation, analytics, AI, browser extension work, and Property MTD integration separately approved.
+
+## Slice 3 - Content type source-of-truth planning
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Preserved controlled and explicit live Studio read activation posture.
+- `FR-IDN-005` - Kept downstream API access read-only and server-side.
+- `FR-IDN-012` - Preserved the no-tenant-ID-from-Web request model boundary.
+- `FR-IDN-031` - Preserved tenant/test header guardrails and tenant context enforcement expectations.
+- `FR-GOV-002` - Planned authoritative governed metadata for Studio content inventory, detail, edit, and publish readiness UX.
+- `NFR-SEC-1` - Preserved fail-closed tenant and authorization boundaries.
+- `NFR-SEC-2` - Planned content type metadata without exposing content body, tenant values, headers, claims, configured values, or sensitive content.
+- `NFR-TEST-1` - Added planning guardrail tests for the source-of-truth design and non-goals.
+
+### Scope delivered
+
+- Added `docs/adopta/studio/STUDIO-CONTENT-TYPE-SOURCE-OF-TRUTH-DESIGN.md`.
+- Added planning guardrail tests for the content type source-of-truth decision.
+- Updated the documentation index.
+- Kept this slice documentation-only plus non-invasive tests.
+- Did not add production code, domain changes, API contract changes, EF migrations, schema changes, appsettings values, deployment automation, or live API activation.
+
+### Source-of-truth decision
+
+Content type must be a real source-of-truth field. It must live on the authored content item, not the version.
+
+The authored content item represents the guidance artifact. Versions represent revisions and lifecycle state for that same artifact. A type change from tooltip to walkthrough changes the artifact kind and must not be treated as ordinary version metadata.
+
+The domain should use a domain-owned enum, not depend directly on runtime application-layer contracts.
+
+Proposed domain enum values:
+
+- `Tooltip`;
+- `Callout`;
+- `Checklist`;
+- `Walkthrough`.
+
+Content type must not be inferred from content key, title, route, selector, UI fallback, runtime delivery metadata, or any other weak signal.
+
+The Web mapper must not fake accuracy. It should set `HasKnownContentType=true` only when the API returns a valid known content type. Missing, invalid, or legacy absent content type must keep `HasKnownContentType=false`.
+
+### Immutability decision
+
+Content type should be required for new live authored content.
+
+Content type should be immutable after live authoring creation unless a future separately approved rule allows draft-only mutation.
+
+If draft-only mutation is later approved, it must be explicit, permission-checked, tenant-scoped, audit-safe, and limited to content that has not entered review, approval, publish, archive, or delivery history.
+
+### Legacy and backward compatibility
+
+Existing content without content type must remain unknown or unavailable until separately migrated or backfilled.
+
+Backward-compatible read behaviour should be:
+
+- known valid API content type maps to `HasKnownContentType=true`;
+- missing content type maps to `HasKnownContentType=false`;
+- invalid content type maps to `HasKnownContentType=false`;
+- no inference is performed from content key, title, route, selector, or UI fallback.
+
+`Unknown` should not be a normal valid value for new live authored content.
+
+### Schema and migration planning
+
+A future implementation will likely require `ContentType` on `AuthoredContentItems`.
+
+Likely persistence shape:
+
+- controlled string mapping;
+- `nvarchar(32)` or equivalent;
+- item-level tenant-owned authored content row;
+- no free-form type values;
+- no sensitive values.
+
+Migration and backfill must be separately approved. No migration should execute automatically. No database should be created automatically. No startup database mutation should be introduced.
+
+Migration options for later approval:
+
+- nullable or staged migration;
+- controlled backfill;
+- validation requiring type for new content only;
+- later hardening migration to require non-null content type only after backfill is complete.
+
+### Future implementation impact
+
+Future implementation is expected to affect:
+
+- domain model;
+- create API contract;
+- read API contract;
+- validation;
+- runtime bundle mapping;
+- Web read DTOs;
+- Web mapper;
+- Studio live create flow;
+- tests;
+- persistence and migration source, separately approved.
+
+No new permission key is expected. `Authoring.Read` remains the read permission. `Authoring.Manage` remains the likely create/manage permission.
+
+### Explicitly not built
+
+- Production code changes.
+- Domain enum implementation.
+- Domain model changes.
+- API contract implementation.
+- EF migrations.
+- Database schema changes.
+- Live read activation by default.
+- Live create/update/review/approve/reject/publish integration.
+- Real appsettings values.
+- Deployment automation.
+- Analytics.
+- AI.
+- Event Hubs.
+- ClickHouse.
+- Browser extension work.
+- Property MTD integration.
+
+### Commands run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+git diff -- src/Adopta.Web/appsettings.json src/Adopta.Web/appsettings.Development.json src/Adopta.Api/appsettings.json src/Adopta.Api/appsettings.Development.json
+Run guardrail searches for tenant/test headers, token/secret markers, live write routes/calls, migration/database mutation, DB connectivity/health checks, appsettings drift, and live activation boundaries.
+git diff --check
+```
+
+Results: .NET debug test, release build, release test, TypeScript typecheck, TypeScript build, TypeScript tests, guardrail searches, and diff whitespace checks passed for Slice 3.
+
+### Known limitations
+
+- This slice does not implement the content type domain model.
+- Content type remains unknown for live authoring API reads until a later approved implementation.
+- No schema migration or backfill is approved by this slice.
+- Application metadata remains ID-only.
+- No live write/workflow/publish integration exists.
+- No operational live read activation is enabled by default.
+
+### Next recommended slice
+
+Implement the content type source-of-truth in a separately approved, tightly scoped production slice. The smallest safe implementation should add the domain-owned enum, item-level domain property, create/read DTO support, validation, runtime bundle mapping, and Web mapper support. Keep EF migration source and database backfill separately approved unless the implementation slice explicitly includes review-only schema work.
