@@ -159,3 +159,5 @@ Sprint 11 Slice 5 does not approve:
 Sprint 11 is ready to close at the read-contract hardening and schema/backfill readiness level.
 
 Remaining production enablement requires a separately approved operational slice for migration execution planning, environment-specific change approval, and controlled backfill execution.
+
+Sprint 12 adds the live draft readiness gate in `docs/adopta/studio/STUDIO-CONTENT-TYPE-MIGRATION-LIVE-DRAFT-READINESS-GATE.md`. That gate blocks live draft create/update integration until migration/backfill readiness is separately approved.
