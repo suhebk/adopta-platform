@@ -501,3 +501,133 @@ Results: .NET debug test, release build, release test, TypeScript typecheck, Typ
 ### Next recommended slice
 
 Plan controlled migration/backfill review for `AuthoredContentItems.ContentType`, or proceed to application display metadata for Studio reads if production SQL Server enablement remains deferred. Keep migration execution, startup mutation, live write/workflow/publish wiring, appsettings values, deployment automation, analytics, AI, browser extension work, and Property MTD integration separately approved.
+
+## Slice 5 - Content type schema/backfill readiness and Sprint 11 closeout
+
+### Requirement IDs covered
+
+- `FR-IDN-001` - Preserved explicit live Studio read activation posture.
+- `FR-IDN-005` - Kept downstream Studio API access read-only.
+- `FR-IDN-012` - Preserved no-tenant-ID Web request model boundary.
+- `FR-IDN-031` - Preserved tenant/test header guardrails and tenant context enforcement expectations.
+- `FR-GOV-002` - Closed the content type source-of-truth work with schema/backfill readiness guidance.
+- `NFR-SEC-1` - Preserved fail-closed migration, activation, and tenant isolation expectations.
+- `NFR-SEC-2` - Documented schema/backfill readiness without exposing content body, configured values, tenant values, or sensitive content.
+- `NFR-TEST-1` - Added documentation guardrail tests for migration review, backfill, rollback, fail-closed behaviour, and closeout status.
+
+### Scope delivered
+
+- Added `docs/adopta/studio/STUDIO-CONTENT-TYPE-SCHEMA-BACKFILL-READINESS.md`.
+- Added documentation guardrail tests for content type schema/backfill readiness.
+- Updated the content type source-of-truth design doc to reference the readiness guide.
+- Updated the documentation index with the new readiness guide.
+- Closed Sprint 11 at the live read contract hardening and schema/backfill readiness level.
+
+### Schema and migration readiness
+
+The review-only migration source remains:
+
+- `src/Adopta.Infrastructure/Persistence/Migrations/20260702000100_AddAuthoredContentType.cs`.
+
+The migration source adds `ContentType` to `AuthoredContentItems`. It remains review-only. Sprint 11 Slice 5 does not approve execution.
+
+No migration was executed. No database was created or mutated. No automatic startup migration logic was added. No deployment automation was added.
+
+### Backfill strategy
+
+Existing authored content without an authoritative type must be handled through a separately approved operational process.
+
+The documented approach is staged:
+
+- inspect tenant-scoped authored content inventory;
+- classify only records with an approved authoritative type source;
+- leave records without authoritative type unknown/unavailable;
+- apply controlled backfill only after data owner approval;
+- validate new content still requires a valid content type;
+- validate live reads mark known type only when the API returns a valid value.
+
+Content type must not be inferred from content key, title, route, selector, UI fallback, runtime delivery metadata, or weak naming patterns.
+
+### Rollback and fail-closed posture
+
+Rollback must be approval-gated and rehearsed before production use.
+
+Fail-closed expectations remain:
+
+- invalid persistence configuration fails safely;
+- live Studio read activation remains disabled unless explicitly configured;
+- live write/workflow/publish integration remains unavailable;
+- cross-tenant existence remains hidden or safely denied;
+- missing or invalid content type must not be treated as authoritative.
+
+### Explicitly not built
+
+- Migration execution.
+- Database creation.
+- Database mutation.
+- Startup migration logic.
+- Deployment automation.
+- Live read activation by default.
+- Live create/update/review/approve/reject/publish integration.
+- Backend/API behaviour changes.
+- EF model configuration changes.
+- Migration source changes.
+- Appsettings changes.
+- Analytics.
+- AI.
+- Event Hubs.
+- ClickHouse.
+- Browser extension work.
+- Property MTD integration.
+
+### Commands to run
+
+```powershell
+dotnet test Adopta.slnx
+dotnet build Adopta.slnx --configuration Release --no-restore
+dotnet test Adopta.slnx --configuration Release --no-build
+pnpm typecheck
+pnpm build
+pnpm test
+rg "net9\.0" src tests docs .github packages apps package.json pnpm-workspace.yaml tsconfig.base.json Adopta.slnx global.json NuGet.config README.md AGENTS.md -g "!**/bin/**" -g "!**/obj/**"
+git diff -- src/Adopta.Web/appsettings.json src/Adopta.Web/appsettings.Development.json src/Adopta.Api/appsettings.json src/Adopta.Api/appsettings.Development.json
+Run guardrail searches for migration execution, DB mutation, DB connectivity/health checks, appsettings drift, tenant/test headers, secret markers, live write routes/calls, and live activation boundaries.
+git diff --check
+```
+
+Results: .NET debug test, release build, release test, TypeScript typecheck, TypeScript build, TypeScript tests, guardrail searches, and diff whitespace checks passed for Slice 5.
+
+### Known limitations
+
+- Migration execution remains separately approval-gated.
+- Production backfill remains separately approval-gated.
+- Live Studio read activation remains explicit and disabled by default.
+- Live Studio create/update/review/approve/reject/publish integration remains unavailable.
+- Application metadata remains ID-only.
+
+### Sprint 11 closeout checklist
+
+- Slice 1 authoring read contract gap review complete.
+- Slice 2 read-only authoring summary metadata complete.
+- Slice 3 content type source-of-truth design complete.
+- Slice 4 content type domain/API implementation complete.
+- Slice 5 content type schema/backfill readiness complete.
+- No migration execution performed.
+- No database mutation performed.
+- No live read activation by default.
+- No live write/workflow/publish wiring added.
+- No real appsettings values or deployment automation added.
+- Guardrail tests and verification completed.
+
+### Sprint 11 closeout status
+
+Sprint 11 is ready to close after Slice 5 verification passes.
+
+### Next recommended sprint
+
+Start ADOPTA-SPRINT-12 with controlled operational planning for one of two paths:
+
+- production migration/backfill execution preparation for `AuthoredContentItems.ContentType`, still separately approval-gated and with no automatic startup mutation; or
+- tenant-scoped application display metadata for Studio live reads if database enablement remains deferred.
+
+Keep migration execution, database mutation, live write/workflow/publish wiring, appsettings values, deployment automation, analytics, AI, browser extension work, and Property MTD integration separately approved.
