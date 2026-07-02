@@ -41,6 +41,7 @@ Property Income MTD remains undisturbed while its remaining sprints continue. Ad
 | studio | Studio Content Type Source-of-Truth Design | Sprint 11 planning for authoritative content type modelling across authoring, API, persistence, runtime mapping, and Studio reads. |
 | studio | Studio Content Type Schema And Backfill Readiness | Sprint 11 schema/backfill readiness guidance for the review-only authored content type migration source. |
 | studio | Studio Content Type Migration And Live Draft Readiness Gate | Sprint 12 readiness gate before live draft create/update can depend on content type schema/backfill state. |
+| studio | Studio Live Draft Create/Update Integration Plan | Sprint 12 planning for gated live draft create/update integration without implementation. |
 | sprints | ADOPTA-SPRINT-5 | Controlled production enablement foundations, starting with reviewable EF schema baseline generation. |
 | sprints | ADOPTA-SPRINT-6 | Runtime delivery API and bundle retrieval foundation. |
 | sprints | ADOPTA-SPRINT-8 | Adoption Studio UI foundation, starting with read-only content list and view. |
